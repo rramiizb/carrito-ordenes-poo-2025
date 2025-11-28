@@ -1,3 +1,4 @@
+
 ✅ 1. README COMPLETO (versión final profesional)
 
 Listo para copiar y pegar directamente como README.md en tu repositorio.
@@ -235,5 +236,3 @@ Integrar con APIs reales de Inventario y Catálogo
 
 
 ## 👥 Equipo
-
-Este README permite que todos los miembros del grupo entiendan qué está hecho y qué falta.
