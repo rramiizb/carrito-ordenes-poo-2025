@@ -2,10 +2,14 @@
 const { reservarStock } = require("../services/inventarioService");
 const { getCarritos } = require("../data/carritoStore");
 
-// Mock catálogo
+// --- MOCK DE CATÁLOGO ---
 const productosMock = {
-  "BK-001": { sku: "BK-001", nombre: "Libro POO", precio: 15000 },
-  "BK-002": { sku: "BK-002", nombre: "Cuaderno", precio: 2500 }
+  "BK-001": { sku: "BK-001", nombre: "Libro POO Avanzado", precio: 15000 },
+  "TE-002": { sku: "TE-002", nombre: "Teclado Mecánico", precio: 45000 },
+  "TE-003": { sku: "TE-003", nombre: "Mouse Gamer", precio: 12000 },
+  "RO-004": { sku: "RO-004", nombre: "Remera Dev", precio: 8000 },
+  "BK-005": { sku: "BK-005", nombre: "Clean Code", precio: 22000 },
+  "TE-006": { sku: "TE-006", nombre: 'Monitor 24"', precio: 120000 }
 };
 
 // Crear carrito
@@ -23,7 +27,6 @@ function crearCarrito(req, res) {
   };
 
   getCarritos().push(nuevoCarrito);
-
   return res.status(201).json({ id: nuevoCarrito.id, estado: nuevoCarrito.estado });
 }
 
@@ -41,7 +44,9 @@ async function agregarItem(req, res) {
   if (carrito.estado !== "ABIERTO") return res.status(409).json({ error: "CarritoCerrado" });
 
   const producto = productosMock[sku];
-  if (!producto) return res.status(404).json({ error: "ProductoNoEncontrado" });
+  if (!producto) {
+    return res.status(404).json({ error: "ProductoNoEncontrado", message: `El SKU ${sku} no existe` });
+  }
 
   try {
     const reserva = await reservarStock(sku, cantidad, carritoId);
@@ -55,6 +60,7 @@ async function agregarItem(req, res) {
         sku,
         cantidad,
         precio: producto.precio,
+        nombre: producto.nombre, 
         reservaId: reserva.reservaId
       });
     }
@@ -66,10 +72,37 @@ async function agregarItem(req, res) {
   }
 }
 
-// Ver carrito
+// Eliminar item
+function eliminarItem(req, res) {
+  const carritoId = req.params.id;
+  const sku = req.params.sku;
+
+  const carrito = getCarritos().find(c => c.id === carritoId);
+  if (!carrito) return res.status(404).json({ error: "CarritoNoExiste" });
+
+  const originalLen = carrito.items.length;
+  carrito.items = carrito.items.filter(item => item.sku !== sku);
+
+  if (carrito.items.length === originalLen) {
+    return res.status(404).json({ error: "ItemNoEncontrado" });
+  }
+
+  return res.status(200).json({ message: "Item eliminado", items: carrito.items });
+}
+
 function verCarrito(req, res) {
   const carrito = getCarritos().find(c => c.id === req.params.id);
   if (!carrito) return res.status(404).json({ error: "CarritoNoExiste" });
+
+  const itemsConNombre = carrito.items.map(item => {
+    const infoReal = productosMock[item.sku];
+    return {
+      sku: item.sku,
+      cantidad: item.cantidad,
+      precio: item.precio,
+      nombre: infoReal ? infoReal.nombre : item.sku 
+    };
+  });
 
   const subtotal = carrito.items.reduce((acc, i) => acc + i.precio * i.cantidad, 0);
   const impuestos = Math.round(subtotal * 0.21);
@@ -79,11 +112,11 @@ function verCarrito(req, res) {
     id: carrito.id,
     usuarioId: carrito.usuarioId,
     estado: carrito.estado,
-    items: carrito.items,
+    items: itemsConNombre,
     subtotal,
     impuestos,
     total
   });
 }
 
-module.exports = { crearCarrito, agregarItem, verCarrito };
+module.exports = { crearCarrito, agregarItem, verCarrito, eliminarItem };

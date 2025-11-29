@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UNSAdA - TPI Carrito</title>
+    <!-- Estilos y Librerías Externas -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col">
+
+    <!-- Navbar -->
+    <nav class="bg-indigo-600 text-white shadow-lg sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center gap-2 font-bold text-xl">
+                <i data-lucide="shopping-bag"></i>
+                <span>Marketplace TPI</span>
+            </div>
+            <div class="flex gap-4 text-sm font-medium">
+                <button onclick="renderCatalog()" class="hover:bg-indigo-700 px-3 py-2 rounded-md transition flex items-center gap-2">
+                    <i data-lucide="store" size="18"></i> Catálogo
+                </button>
+                <button onclick="renderCart()" class="hover:bg-indigo-700 px-3 py-2 rounded-md transition flex items-center gap-2">
+                    <i data-lucide="shopping-cart" size="18"></i> Carrito
+                    <span id="badge-count" class="bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center hidden">0</span>
+                </button>
+                <button onclick="renderOrders()" class="hover:bg-indigo-700 px-3 py-2 rounded-md transition flex items-center gap-2">
+                    <i data-lucide="list" size="18"></i> Mis Órdenes
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Contenedor Principal -->
+    <main class="max-w-7xl mx-auto p-6 flex-grow w-full">
+        
+        <!-- VISTA: CATÁLOGO -->
+        <section id="view-catalog" class="animate-fade-in">
+            <div class="mb-8 text-center">
+                <h1 class="text-4xl font-bold text-slate-900 mb-2">Productos Disponibles</h1>
+                <p class="text-slate-500">Selecciona los productos para agregar a tu carrito</p>
+            </div>
+            <div id="catalog-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Se llena con JS -->
+            </div>
+        </section>
+
+        <!-- VISTA: CARRITO -->
+        <section id="view-cart" class="hidden animate-fade-in max-w-4xl mx-auto">
+            <h2 class="text-3xl font-bold text-slate-900 mb-6 flex items-center gap-3">
+                <i data-lucide="shopping-cart" class="text-indigo-600"></i> Tu Carrito
+            </h2>
+
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div id="cart-items-list" class="divide-y divide-slate-100">
+                    <!-- Items -->
+                </div>
+                
+                <div id="cart-footer" class="p-6 bg-slate-50 border-t border-slate-200">
+                    <div class="flex justify-between items-end mb-6">
+                        <div class="text-sm text-slate-500 space-y-1">
+                            <p>Subtotal: <span id="summary-subtotal" class="font-medium">$0</span></p>
+                            <p>IVA (21%): <span id="summary-tax" class="font-medium">$0</span></p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm text-slate-500">Total a Pagar</p>
+                            <p class="text-3xl font-bold text-indigo-600" id="summary-total">$0</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <button onclick="renderCatalog()" class="flex-1 px-4 py-3 border border-slate-300 text-slate-700 font-bold rounded-lg hover:bg-white transition">
+                            Seguir comprando
+                        </button>
+                        <button onclick="createOrder()" class="flex-1 px-4 py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 shadow-md hover:shadow-lg transition flex justify-center items-center gap-2">
+                            Confirmar Compra <i data-lucide="arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- VISTA: ÓRDENES -->
+        <section id="view-orders" class="hidden animate-fade-in max-w-3xl mx-auto">
+            <h2 class="text-3xl font-bold text-slate-900 mb-6">Mis Órdenes</h2>
+            <div id="orders-list" class="space-y-4">
+                <p class="text-center text-slate-500 py-10">No hay historial disponible aún.</p>
+            </div>
+        </section>
+
+        <!-- VISTA: ÉXITO -->
+        <section id="view-success" class="hidden animate-fade-in text-center py-16">
+            <div class="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 text-green-600 animate-bounce">
+                <i data-lucide="check" size="48"></i>
+            </div>
+            <h2 class="text-4xl font-bold text-slate-900 mb-4">¡Orden Confirmada!</h2>
+            <p class="text-xl text-slate-600 mb-8">El sistema ha generado tu orden correctamente.</p>
+            
+            <div class="max-w-md mx-auto bg-white p-8 rounded-xl shadow-lg border border-slate-100 mb-8 relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-full h-2 bg-green-500"></div>
+                <div class="flex justify-between items-center mb-4 pb-4 border-b border-slate-100">
+                    <span class="text-slate-500">Orden ID</span>
+                    <span class="font-mono font-bold text-lg text-slate-800" id="order-id-display">#---</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-slate-500">Total</span>
+                    <span class="font-bold text-2xl text-green-600" id="order-total-display">$---</span>
+                </div>
+            </div>
+
+            <button onclick="initApp()" class="text-indigo-600 font-bold hover:text-indigo-800 underline">
+                Volver al inicio
+            </button>
+        </section>
+
+    </main>
+
+    <!-- Notificación Toast -->
+    <div id="toast" class="fixed bottom-6 right-6 bg-slate-800 text-white px-6 py-4 rounded-lg shadow-2xl transform translate-y-32 transition-transform duration-300 flex items-center gap-3 z-50">
+        <i data-lucide="info" class="text-indigo-400"></i>
+        <span id="toast-msg">Mensaje</span>
+    </div>
+
+    <!-- MODAL DE CONFIRMACIÓN -->
+    <div id="confirm-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 backdrop-blur-sm opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-xl shadow-2xl p-6 max-w-sm w-full transform scale-95 transition-transform duration-300" id="confirm-modal-content">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500">
+                    <i data-lucide="alert-triangle" size="32"></i>
+                </div>
+                <h3 class="text-xl font-bold text-slate-800 mb-2">¿Eliminar producto?</h3>
+                <p class="text-slate-500 text-sm">Esta acción quitará el ítem de tu carrito actual.</p>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="closeModal()" class="flex-1 px-4 py-2 border border-slate-300 rounded-lg text-slate-700 font-medium hover:bg-slate-50 transition">
+                    Cancelar
+                </button>
+                <button id="confirm-btn-action" class="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg font-bold hover:bg-red-600 transition shadow-lg shadow-red-200">
+                    Sí, eliminar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- IMPORTANTE: Conexión con el archivo de lógica -->
+    <script src="js/main.js"></script>
+</body>
+</html>
