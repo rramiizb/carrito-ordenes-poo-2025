@@ -5,10 +5,8 @@ Integrantes del Grupo:
    Zabala Ramiro
    Piñeyro Federico Ramón
 
-Este proyecto corresponde al Trabajo Práctico Integrador de la materia Programación Orientada a Objetos 2025. Se encarga de gestionar el carrito de compras, las reservas de stock y la generación de órdenes con cálculo automático de precios, impuestos y totales.
+Este proyecto corresponde al Trabajo Práctico Integrador de la materia Programación Orientada a Objetos 2025. Se encarga de gestionar el carrito de compras; las reservas de stock; la generación de órdenes con cálculo automático de precios, impuestos y totales; y el historial de órdenes del usuario.
 
-
-El módulo implementa la lógica completa de un e-commerce, gestionando el ciclo de vida de un carrito de compras, la validación de stock (simulada), la confirmación de la compra y el historial de órdenes del usuario.
 
 La arquitectura está pensada para integrarse con otros módulos del sistema:
 
@@ -49,7 +47,12 @@ src/
 │
 ├── data/                → persistencia temporal
 │   └── carritoStore.js
-│
+|
+├── public/              → frontend
+│   ├── js/
+│   │   └── main.js      
+│   └── index.html
+│  
 └── config/              → conexión a bases de datos (pendiente)
 
 
@@ -59,8 +62,11 @@ Usuario
    │
    ├─ POST /carts              → crear carrito
    ├─ POST /carts/:id/items    → agregar productos
+   ├─ DELETE /carts/:id/items/:sku  → eliminar un item del carrito
    ├─ GET  /carts/:id          → ver carrito
-   └─ POST /orders/:carritoId  → cerrar carrito + generar orden
+   ├─ POST /orders/:carritoId  → cerrar carrito + generar orden
+   └─GET /orders               → lista el historial de órdenes
+
 
 
 ## 📌 Endpoints principales
@@ -201,7 +207,7 @@ ordenes
 ## 🗺️ Diagrama general de módulos
 
 
-   Catálogo ──────┐
+   Catálogo  ──────┐
                    │   (datos de productos)
                    ▼
 Usuario → Carrito → Órdenes
