@@ -1,24 +1,25 @@
 // src/controllers/orderController.js
+const { getCarritos } = require("../data/carritoStore");
 
 let ordenes = []; // almacenamiento temporal
 
 function crearOrden(req, res) {
-  // Extraemos carrito del body SIN renombrarlo, SIN sombra de variables
-  const carrito = req.body.carrito;
+  const carritoId = req.params.carritoId;
+  const carrito = getCarritos().find(c => c.id === carritoId);
 
-  // Validación: falta carrito
+  // Validación: falta carrito (o no existe)
   if (!carrito) {
-    return res.status(422).json({
-      error: "FaltanCampos",
-      message: "Se requiere carrito para generar orden"
+    return res.status(404).json({
+      error: "CarritoNoEncontrado",
+      message: "No se encontró el carrito para generar la orden"
     });
   }
 
-  // Validación: items inexistentes
-  if (!Array.isArray(carrito.items)) {
-    return res.status(500).json({
+  // Validación: items inexistentes o vacíos
+  if (!Array.isArray(carrito.items) || carrito.items.length === 0) {
+    return res.status(422).json({
       error: "CarritoSinItems",
-      message: "El carrito no contiene un arreglo válido de items."
+      message: "El carrito no contiene items para generar la orden."
     });
   }
 
@@ -42,7 +43,8 @@ function crearOrden(req, res) {
   const nuevaOrden = {
     id: "o" + Math.floor(Math.random() * 999999),
     carritoId: carrito.id,
-    items: carrito.items,
+    fecha: new Date().toISOString(),
+    items: [...carrito.items],
     subtotal,
     impuestos,
     total,
@@ -51,10 +53,17 @@ function crearOrden(req, res) {
 
   ordenes.push(nuevaOrden);
 
+  carrito.estado = "CERRADO";
+  carrito.items = [];
+
   return res.status(201).json({
     id: nuevaOrden.id,
     total
   });
 }
 
-module.exports = { crearOrden };
+function obtenerOrdenes(req, res) {
+    res.status(200).json(ordenes);
+}
+
+module.exports = { crearOrden, obtenerOrdenes };

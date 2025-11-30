@@ -1,5 +1,5 @@
 // src/controllers/cartController.js
-const { reservarStock } = require("../services/inventarioService");
+const { reservarStock, cancelarReservaSimulada } = require("../services/inventarioService");
 const { getCarritos } = require("../data/carritoStore");
 
 // --- MOCK DE CATÁLOGO ---
@@ -72,7 +72,7 @@ async function agregarItem(req, res) {
   }
 }
 
-// Eliminar item
+// Eliminar item (CORREGIDO: Ahora devuelve el stock)
 function eliminarItem(req, res) {
   const carritoId = req.params.id;
   const sku = req.params.sku;
@@ -80,16 +80,21 @@ function eliminarItem(req, res) {
   const carrito = getCarritos().find(c => c.id === carritoId);
   if (!carrito) return res.status(404).json({ error: "CarritoNoExiste" });
 
-  const originalLen = carrito.items.length;
-  carrito.items = carrito.items.filter(item => item.sku !== sku);
+  const itemABorrar = carrito.items.find(item => item.sku === sku);
 
-  if (carrito.items.length === originalLen) {
+  if (!itemABorrar) {
     return res.status(404).json({ error: "ItemNoEncontrado" });
   }
 
-  return res.status(200).json({ message: "Item eliminado", items: carrito.items });
+  console.log(`[Carrito] Devolviendo stock de ${sku}: ${itemABorrar.cantidad} unidades`);
+  cancelarReservaSimulada(itemABorrar.reservaId, itemABorrar.sku, itemABorrar.cantidad);
+
+  carrito.items = carrito.items.filter(item => item.sku !== sku);
+
+  return res.status(200).json({ message: "Item eliminado y stock restaurado", items: carrito.items });
 }
 
+// Ver carrito
 function verCarrito(req, res) {
   const carrito = getCarritos().find(c => c.id === req.params.id);
   if (!carrito) return res.status(404).json({ error: "CarritoNoExiste" });

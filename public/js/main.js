@@ -1,19 +1,53 @@
-// public/js/main.js
 const USER_ID = 1;
 let currentCartId = null;
-let itemToDelete = null; // Variable para el modal
+let itemToDelete = null; 
 
-// Catálogo Simulado (Frontend)
+// --- CATÁLOGO VISUAL ---
 const CATALOGO = [
-    { sku: 'BK-001', nombre: 'Libro POO Avanzado', precio: 15000, cat: 'Libros' },
-    { sku: 'TE-002', nombre: 'Teclado Mecánico', precio: 45000, cat: 'Tecnología' },
-    { sku: 'TE-003', nombre: 'Mouse Gamer', precio: 12000, cat: 'Tecnología' },
-    { sku: 'RO-004', nombre: 'Remera Dev', precio: 8000, cat: 'Ropa' },
-    { sku: 'BK-005', nombre: 'Clean Code', precio: 22000, cat: 'Libros' },
-    { sku: 'TE-006', nombre: 'Monitor 24"', precio: 120000, cat: 'Tecnología' },
+    { 
+        sku: 'BK-001', 
+        nombre: 'Libro POO Avanzado', 
+        precio: 15000, 
+        cat: 'Libros',
+        img: 'https://images.unsplash.com/photo-1532012197267-da84d127e765?auto=format&fit=crop&w=400&q=80'
+    },
+    { 
+        sku: 'TE-002', 
+        nombre: 'Teclado Mecánico', 
+        precio: 45000, 
+        cat: 'Tecnología',
+        img: 'https://images.unsplash.com/photo-1595225476474-87563907a212?auto=format&fit=crop&w=400&q=80'
+    },
+    { 
+        sku: 'TE-003', 
+        nombre: 'Mouse Gamer', 
+        precio: 12000, 
+        cat: 'Tecnología',
+        img: 'https://images.unsplash.com/photo-1527814050087-3793815479db?auto=format&fit=crop&w=400&q=80'
+    },
+    { 
+        sku: 'RO-004', 
+        nombre: 'Remera Dev', 
+        precio: 8000, 
+        cat: 'Ropa',
+        img: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=400&q=80'
+    },
+    { 
+        sku: 'BK-005', 
+        nombre: 'Clean Code', 
+        precio: 22000, 
+        cat: 'Libros',
+        img: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=400&q=80'
+    },
+    { 
+        sku: 'TE-006', 
+        nombre: 'Monitor 24"', 
+        precio: 120000, 
+        cat: 'Tecnología',
+        img: 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?auto=format&fit=crop&w=400&q=80'
+    },
 ];
 
-// --- INICIO ---
 async function initApp() {
     renderCatalog();
     lucide.createIcons();
@@ -30,7 +64,6 @@ async function initApp() {
     }
 }
 
-// --- NAVEGACIÓN ---
 function hideAll() {
     ['view-catalog', 'view-cart', 'view-success', 'view-orders'].forEach(id => {
         document.getElementById(id).classList.add('hidden');
@@ -43,31 +76,34 @@ function renderCatalog() {
     
     const grid = document.getElementById('catalog-grid');
     grid.innerHTML = CATALOGO.map(prod => `
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-lg transition group">
-            <div class="h-40 bg-slate-50 rounded-lg flex items-center justify-center text-slate-300 mb-4 group-hover:scale-105 transition-transform">
-                <i data-lucide="package" size="64"></i>
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-lg transition group flex flex-col h-full">
+            <div class="h-48 overflow-hidden bg-slate-100 relative">
+                <img src="${prod.img}" alt="${prod.nombre}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" onerror="this.src='https://placehold.co/400x300?text=Sin+Imagen'">
+                <span class="absolute top-2 right-2 text-xs font-bold text-indigo-600 bg-white/90 backdrop-blur px-2 py-1 rounded-full uppercase tracking-wide shadow-sm">
+                    ${prod.cat}
+                </span>
             </div>
-            <div class="flex justify-between items-start mb-2">
+
+            <div class="p-5 flex flex-col flex-grow justify-between">
                 <div>
-                    <span class="text-xs font-bold text-indigo-500 bg-indigo-50 px-2 py-1 rounded-full uppercase tracking-wide">${prod.cat}</span>
-                    <h3 class="font-bold text-lg mt-2 text-slate-800 leading-tight">${prod.nombre}</h3>
+                    <h3 class="font-bold text-lg text-slate-800 leading-tight mb-1">${prod.nombre}</h3>
+                    <p class="text-sm text-slate-400">SKU: ${prod.sku}</p>
                 </div>
-            </div>
-            <div class="flex items-end justify-between mt-4 pt-4 border-t border-slate-100">
-                <div>
-                    <p class="text-xs text-slate-400">Precio</p>
-                    <p class="text-xl font-bold text-slate-900">$${prod.precio.toLocaleString()}</p>
+                
+                <div class="flex items-end justify-between mt-4 pt-4 border-t border-slate-50">
+                    <div>
+                        <p class="text-xs text-slate-400 uppercase font-semibold">Precio</p>
+                        <p class="text-xl font-bold text-slate-900">$${prod.precio.toLocaleString()}</p>
+                    </div>
+                    <button onclick="addToCart('${prod.sku}')" class="bg-indigo-600 text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-indigo-700 transition shadow-md hover:shadow-indigo-200 active:scale-95">
+                        <i data-lucide="plus"></i>
+                    </button>
                 </div>
-                <button onclick="addToCart('${prod.sku}')" class="bg-indigo-600 text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-indigo-700 transition shadow-md hover:shadow-indigo-200">
-                    <i data-lucide="plus"></i>
-                </button>
             </div>
         </div>
     `).join('');
     lucide.createIcons();
 }
-
-// --- LÓGICA DE NEGOCIO ---
 
 async function addToCart(sku) {
     if (!currentCartId) return showToast("Inicializando carrito...");
@@ -80,7 +116,7 @@ async function addToCart(sku) {
         });
 
         if (res.ok) {
-            showToast("¡Producto agregado al carrito!");
+            showToast("¡Producto agregado!");
             const badge = document.getElementById('badge-count');
             badge.innerText = parseInt(badge.innerText) + 1;
             badge.classList.remove('hidden');
@@ -119,11 +155,14 @@ async function renderCart() {
             footer.classList.add('hidden');
         } else {
             footer.classList.remove('hidden');
-            // Lista con botón de eliminar actualizado
-            list.innerHTML = items.map(item => `
+            list.innerHTML = items.map(item => {
+                const prodInfo = CATALOGO.find(p => p.sku === item.sku);
+                const imgSrc = prodInfo ? prodInfo.img : 'https://placehold.co/100?text=SIN+IMG';
+
+                return `
                 <div class="p-4 flex items-center gap-4 hover:bg-slate-50 transition border-b last:border-0 border-slate-100">
-                    <div class="w-16 h-16 bg-white border border-slate-200 rounded flex items-center justify-center text-slate-300">
-                        <i data-lucide="package"></i>
+                    <div class="w-16 h-16 bg-white border border-slate-200 rounded-lg overflow-hidden flex-shrink-0">
+                        <img src="${imgSrc}" class="w-full h-full object-cover">
                     </div>
                     <div class="flex-1">
                         <h4 class="font-bold text-slate-800">${item.nombre || item.sku}</h4>
@@ -136,7 +175,7 @@ async function renderCart() {
                         </button>
                     </div>
                 </div>
-            `).join('');
+            `}).join('');
 
             const subtotal = cart.subtotal || items.reduce((acc, i) => acc + (i.precio * i.cantidad), 0);
             const impuestos = cart.impuestos || subtotal * 0.21;
@@ -181,9 +220,65 @@ async function createOrder() {
     }
 }
 
-function renderOrders() {
-        hideAll();
-        document.getElementById('view-orders').classList.remove('hidden');
+async function renderOrders() {
+    hideAll();
+    const section = document.getElementById('view-orders');
+    section.classList.remove('hidden');
+    
+    const list = document.getElementById('orders-list');
+    list.innerHTML = '<p class="text-center text-slate-400 py-10">Cargando historial...</p>';
+
+    try {
+        const res = await fetch('/orders');
+        
+        if (!res.ok) throw new Error("Error al obtener órdenes");
+
+        const ordenes = await res.json();
+        ordenes.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+
+        if (ordenes.length === 0) {
+            list.innerHTML = `
+                <div class="text-center py-10 opacity-50">
+                    <i data-lucide="clipboard-list" class="mx-auto mb-2" size="48"></i>
+                    <p>No tienes órdenes generadas aún.</p>
+                </div>
+            `;
+        } else {
+            list.innerHTML = ordenes.map(orden => `
+                <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-6 mb-4 hover:shadow-md transition">
+                    <div class="flex justify-between items-start mb-4 border-b border-slate-100 pb-4">
+                        <div>
+                            <h3 class="font-bold text-lg text-indigo-900">Orden #${orden.id}</h3>
+                            <p class="text-xs text-slate-500">${new Date(orden.fecha).toLocaleString()}</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="inline-block px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-bold">
+                                ${orden.estado}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-2 mb-4">
+                        ${orden.items.map(item => `
+                            <div class="flex justify-between text-sm text-slate-600">
+                                <span>${item.cantidad}x ${item.nombre || item.sku}</span>
+                                <span>$${(item.precio * item.cantidad).toLocaleString()}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                    
+                    <div class="flex justify-between items-center pt-2 border-t border-slate-100 font-bold text-lg">
+                        <span>Total</span>
+                        <span class="text-indigo-600">$${orden.total.toLocaleString()}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+        lucide.createIcons();
+    } catch (e) {
+        console.error(e);
+        list.innerHTML = '<p class="text-center text-red-400 py-10">Error al cargar el historial.</p>';
+    }
 }
 
 function showToast(msg) {
@@ -192,8 +287,6 @@ function showToast(msg) {
     el.classList.remove('translate-y-32');
     setTimeout(() => el.classList.add('translate-y-32'), 3000);
 }
-
-// --- LÓGICA DE MODAL ---
 
 function removeFromCart(sku) {
     itemToDelete = sku;
@@ -222,19 +315,13 @@ function closeModal() {
     }, 300);
 }
 
-// Event Listeners
 document.getElementById('confirm-btn-action').addEventListener('click', async () => {
     if (!itemToDelete) return;
-    
     const btn = document.getElementById('confirm-btn-action');
     const originalText = btn.innerHTML;
     btn.innerHTML = "Eliminando..."; 
-    
     try {
-        const res = await fetch(`/carts/${currentCartId}/items/${itemToDelete}`, {
-            method: 'DELETE'
-        });
-
+        const res = await fetch(`/carts/${currentCartId}/items/${itemToDelete}`, { method: 'DELETE' });
         if (res.ok) {
             showToast("Producto eliminado");
             renderCart(); 
@@ -249,5 +336,4 @@ document.getElementById('confirm-btn-action').addEventListener('click', async ()
     }
 });
 
-// Inicializar cuando carga la página
 window.onload = initApp;
