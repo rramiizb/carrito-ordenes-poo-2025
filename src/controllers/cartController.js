@@ -49,21 +49,28 @@ async function agregarItem(req, res) {
     res.status(500).json({ error: "ErrorInterno" });
   }
 }
+const db = require('../../db');
 
 async function verCarrito(req, res) {
   try {
     const carritoId = req.params.id;
-    const [carritos] = await db.query("SELECT * FROM carts WHERE id = ?", [carritoId]);
+    const [carritos] = await db.query(
+      "SELECT * FROM carts WHERE id = ?",
+      [carritoId]
+    );
     if (!carritos[0]) return res.status(404).json({ error: "CarritoNoExiste" });
 
     const [items] = await db.query(
-      "SELECT ci.*, p.nombre, p.precio FROM cart_items ci LEFT JOIN products p ON ci.sku = p.sku WHERE ci.carrito_id = ?", 
+      `SELECT ci.*, p.nombre, p.precio
+       FROM cart_items ci
+       LEFT JOIN products p ON ci.sku = p.sku
+       WHERE ci.carrito_id = ?`,
       [carritoId]
     );
 
-    const subtotal = items.reduce((acc, i) => acc + i.precio * i.cantidad, 0);
-    const impuestos = Math.round(subtotal * 0.21);
-    const total = subtotal + impuestos;
+    const subtotal = Number(items.reduce((acc, i) => acc + (i.precio || 0) * (i.cantidad || 0), 0).toFixed(2));
+    const impuestos = Number((subtotal * 0.21).toFixed(2));
+    const total = Number((subtotal + impuestos).toFixed(2));
 
     res.status(200).json({ ...carritos[0], items, subtotal, impuestos, total });
 
@@ -72,6 +79,8 @@ async function verCarrito(req, res) {
     res.status(500).json({ error: "ErrorInterno" });
   }
 }
+
+module.exports = { verCarrito };
 
 async function eliminarItem(req, res) {
   try {

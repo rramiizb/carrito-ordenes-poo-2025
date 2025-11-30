@@ -1,39 +1,55 @@
-// src/controllers/orderController.js
-const db = require("../../db");
-const { cerrarCarrito } = require("../services/cerrarCarritoService");
+const db = require('../../db');
 
-async function crearOrden(req, res) {
+
+async function crearOrden(res, carrito) {
   try {
-    const carritoId = req.params.carritoId;
-    const carrito = await cerrarCarrito(carritoId);
-    if (!carrito) return res.status(404).json({ error: "CarritoNoExiste" });
-    if (carrito.error) return res.status(409).json(carrito);
-
-    // Crear orden
-    const subtotal = carrito.items.reduce((acc, i) => acc + i.precio * i.cantidad, 0);
-    const impuestos = Math.round(subtotal * 0.21);
-    const total = subtotal + impuestos;
-
-    const [result] = await db.query(
-      "INSERT INTO orders (carrito_id, fecha, subtotal, impuestos, total, estado) VALUES (?, NOW(), ?, ?, ?, 'PENDIENTE_PAGO')",
-      [carritoId, subtotal, impuestos, total]
+    const [orderResult] = await db.query(
+      `INSERT INTO orders (carrito_id, subtotal, impuestos, total, estado) VALUES (?, ?, ?, ?, 'CERRADO')`,
+      [carrito.id, carrito.subtotal, carrito.impuestos, carrito.total]
     );
 
-    res.status(201).json({ id: result.insertId, total });
+    const orderId = orderResult.insertId;
 
-  } catch(err) {
+    // Insertar items de la orden
+    for (const item of carrito.items) {
+      await db.query(
+        `INSERT INTO order_items (order_id, sku, cantidad, precio_unitario) VALUES (?, ?, ?, ?)`,
+        [orderId, item.sku, item.cantidad, item.precio]
+      );
+    }
+
+    res.json({ message: "Orden creada correctamente", orderId });
+  } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "ErrorInterno" });
+    res.status(500).json({ error: "ErrorInterno", message: err.message });
   }
 }
 
+
 async function obtenerOrdenes(req, res) {
   try {
-    const [ordenes] = await db.query("SELECT * FROM orders");
-    res.status(200).json(ordenes);
-  } catch(err) {
+    const [orders] = await db.query("SELECT * FROM orders ORDER BY id DESC");
+
+    const results = [];
+    for (let o of orders) {
+      const [items] = await db.query(
+        "SELECT oi.*, p.nombre FROM order_items oi LEFT JOIN products p ON oi.sku = p.sku WHERE oi.order_id = ?",
+        [o.id]
+      );
+      items.forEach(i => i.precio_unitario = Number(i.precio_unitario) || 0);
+      results.push({
+        ...o,
+        subtotal: Number(o.subtotal) || 0,
+        impuestos: Number(o.impuestos) || 0,
+        total: Number(o.total) || 0,
+        items
+      });
+    }
+
+    res.status(200).json(results);
+  } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "ErrorInterno" });
+    res.status(500).json({ error: "ErrorInterno", message: err.message });
   }
 }
 

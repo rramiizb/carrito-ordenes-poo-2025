@@ -1,54 +1,39 @@
-// src/services/cerrarCarritoService.js
-const db = require("../../db");
+const db = require('../../db');
 
 async function cerrarCarrito(carritoId) {
-  if (!carritoId) return null;
-
-  const conn = await db.getConnection();
   try {
-    await conn.beginTransaction();
-
-    // Buscar carrito
-    const [carritos] = await conn.query(
-      "SELECT * FROM carts WHERE id = ? FOR UPDATE", 
+    const [carritos] = await db.query(
+      "SELECT * FROM carts WHERE id = ? AND estado = 'ABIERTO'",
       [carritoId]
     );
+    if (!carritos[0]) return { error: "CarritoNoExiste" };
     const carrito = carritos[0];
-    if (!carrito) {
-      await conn.rollback();
-      return null;
-    }
 
-    // Obtener items
-    const [items] = await conn.query(
-      "SELECT ci.*, p.nombre FROM cart_items ci LEFT JOIN products p ON ci.sku = p.sku WHERE carrito_id = ?", 
+    const [items] = await db.query(
+      `SELECT ci.*, p.nombre, p.precio
+       FROM cart_items ci
+       LEFT JOIN products p ON ci.sku = p.sku
+       WHERE ci.carrito_id = ?`,
       [carritoId]
     );
+    if (!items.length) return { error: "CarritoVacio" };
 
-    if (!items || items.length === 0) {
-      await conn.rollback();
-      return { error: "CarritoVacio" };
-    }
+    // Convertir precios a número
+    const subtotal = items.reduce((acc, i) => acc + (Number(i.precio) || 0) * (Number(i.cantidad) || 0), 0);
+    const impuestos = Number((subtotal * 0.21).toFixed(2));
+    const total = Number((subtotal + impuestos).toFixed(2));
 
-    if (carrito.estado === "CERRADO") {
-      await conn.commit();
-      carrito.items = items;
-      return carrito;
-    }
+    // Actualizar carrito en BD
+    await db.query(
+      `UPDATE carts SET estado='CERRADO', subtotal=?, impuestos=?, total=? WHERE id=?`,
+      [subtotal, impuestos, total, carritoId]
+    );
 
-    // Marcar como cerrado
-    await conn.query("UPDATE carts SET estado = 'CERRADO' WHERE id = ?", [carritoId]);
-    await conn.commit();
-
-    carrito.items = items;
-    carrito.estado = "CERRADO";
-    return carrito;
+    return { ...carrito, items, subtotal, impuestos, total, estado: 'CERRADO' };
 
   } catch (err) {
-    try { await conn.rollback(); } catch(e) {}
-    throw err;
-  } finally {
-    conn.release();
+    console.error(err);
+    return { error: "ErrorInterno", message: err.message };
   }
 }
 
