@@ -249,29 +249,29 @@ Usuario → Carrito → Órdenes
 
 
 ## 🎯 Estado actual del módulo
+```
+Sección	               Estado
 
-Sección	         Estado
+Carritos		            ✔ Completo
 
-Carritos		✔ Completo
+Items	        	         ✔ Completo
 
-Items	        	✔ Completo
+Cálculo totales		   ✔ Completo
 
-Cálculo totales		✔ Completo
+Cierre de carrito      	✔ Funcional
 
-Cierre de carrito	✔ Funcional
-
-Creación de órdenes	✔ Funcionando
+Creación de órdenes	   ✔ Funcionando
 
 Integración inventario	🔶 Simulada
 
-Integración catálogo	🔶 Simulada
+Integración catálogo	   🔶 Simulada
 
-MySQL real		🔶 Pendiente
+MySQL real		         🔶 Pendiente
 
-Validaciones extra	🔶 Pendiente
+Validaciones extra	   🔶 Pendiente
 
-README			✔ Completo
-
+README			         ✔ Completo
+```
 
 ## ✔ Próximos pasos
 
