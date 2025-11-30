@@ -1,12 +1,14 @@
+# Carrito & Órdenes — Módulo del TP Integrador (POO 2025)
 
-✅ 1. README COMPLETO (versión final profesional)
+Integrantes del Grupo:
+   [Apellido, Nombre] - Legajo: XXXXX
+   [Apellido, Nombre] - Legajo: XXXXX
+   [Apellido, Nombre] - Legajo: XXXXX
 
-Listo para copiar y pegar directamente como README.md en tu repositorio.
+Este proyecto corresponde al Trabajo Práctico Integrador de la materia Programación Orientada a Objetos 2025. Se encarga de gestionar el carrito de compras, las reservas de stock y la generación de órdenes con cálculo automático de precios, impuestos y totales.
 
 
-# 📦 Carrito & Órdenes — Módulo del TP Integrador (POO 2025)
-
-Este módulo forma parte del Trabajo Práctico Integrador 2025 y se encarga de gestionar el carrito de compras, las reservas de stock y la generación de órdenes con cálculo automático de precios, impuestos y totales.
+El módulo implementa la lógica completa de un e-commerce, gestionando el ciclo de vida de un carrito de compras, la validación de stock (simulada), la confirmación de la compra y el historial de órdenes del usuario.
 
 La arquitectura está pensada para integrarse con otros módulos del sistema:
 
