@@ -1,12 +1,9 @@
 // src/controllers/orderController.js
-
-let ordenes = []; // almacenamiento temporal
+let ordenes = [];
 
 function crearOrden(req, res) {
-  // Extraemos carrito del body SIN renombrarlo, SIN sombra de variables
-  const carrito = req.body.carrito;
+  const { carrito } = req.body;
 
-  // Validación: falta carrito
   if (!carrito) {
     return res.status(422).json({
       error: "FaltanCampos",
@@ -14,28 +11,24 @@ function crearOrden(req, res) {
     });
   }
 
-  // Validación: items inexistentes
-  if (!Array.isArray(carrito.items)) {
-    return res.status(500).json({
-      error: "CarritoSinItems",
-      message: "El carrito no contiene un arreglo válido de items."
+  // ❗ Validar carrito vacío
+  if (!carrito.items || carrito.items.length === 0) {
+    return res.status(409).json({
+      error: "CarritoVacio",
+      message: "No se puede generar una orden con un carrito vacío."
     });
   }
 
-  // Validación: Orden ya generada
-  const existe = ordenes.find(o => o.carritoId === carrito.id);
-  if (existe) {
+  // ❗ Evitar orden duplicada
+  const yaExiste = ordenes.find(o => o.carritoId === carrito.id);
+  if (yaExiste) {
     return res.status(409).json({
       error: "OrdenYaExiste",
-      message: "Este carrito ya tiene una orden generada previamente."
+      message: "Este carrito ya tiene una orden generada."
     });
   }
 
-  // Cálculos finales
-  const subtotal = carrito.items.reduce(
-    (acc, it) => acc + (it.precio * it.cantidad),
-    0
-  );
+  const subtotal = carrito.items.reduce((acc, it) => acc + it.precio * it.cantidad, 0);
   const impuestos = Math.round(subtotal * 0.21);
   const total = subtotal + impuestos;
 

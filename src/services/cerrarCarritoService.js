@@ -1,21 +1,24 @@
+// src/services/cerrarCarritoService.js
 const { getCarritos } = require("../data/carritoStore");
 
 function cerrarCarrito(carritoId) {
   const carritos = getCarritos();
-
-  // 1) Buscar carrito
   const carrito = carritos.find(c => c.id === carritoId);
   if (!carrito) return null;
 
-  // 2) Si ya estaba cerrado, lo devolvemos igual
+  // ❗ Si ya está cerrado, lo devolvemos igual
   if (carrito.estado === "CERRADO") {
     return carrito;
   }
 
-  // 3) Cerrarlo
+  // ❗ No permitir cerrar carritos vacíos
+  if (!carrito.items || carrito.items.length === 0) {
+    return { error: "CarritoVacio" };
+  }
+
+  // Marcar como cerrado
   carrito.estado = "CERRADO";
   return carrito;
 }
 
 module.exports = { cerrarCarrito };
- 

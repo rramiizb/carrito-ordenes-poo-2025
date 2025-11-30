@@ -2,7 +2,9 @@
 const { reservarStock } = require("../services/inventarioService");
 const { getCarritos } = require("../data/carritoStore");
 
-// Mock catálogo
+let carritos = getCarritos();
+
+// Mock catálogo para validar SKU y precio
 const productosMock = {
   "BK-001": { sku: "BK-001", nombre: "Libro POO", precio: 15000 },
   "BK-002": { sku: "BK-002", nombre: "Cuaderno", precio: 2500 }
@@ -12,7 +14,10 @@ const productosMock = {
 function crearCarrito(req, res) {
   const { usuarioId } = req.body;
   if (!usuarioId) {
-    return res.status(422).json({ error: "FaltanCampos", message: "usuarioId es requerido" });
+    return res.status(422).json({
+      error: "FaltanCampos",
+      message: "usuarioId es requerido"
+    });
   }
 
   const nuevoCarrito = {
@@ -22,26 +27,48 @@ function crearCarrito(req, res) {
     items: []
   };
 
-  getCarritos().push(nuevoCarrito);
-
-  return res.status(201).json({ id: nuevoCarrito.id, estado: nuevoCarrito.estado });
+  carritos.push(nuevoCarrito);
+  res.status(201).json({ id: nuevoCarrito.id, estado: nuevoCarrito.estado });
 }
 
-// Agregar item
+// Agregar ítem
 async function agregarItem(req, res) {
   const carritoId = req.params.id;
   const { sku, cantidad } = req.body;
 
-  if (!sku || typeof cantidad !== "number" || cantidad <= 0) {
-    return res.status(422).json({ error: "CantidadInvalida" });
+  if (!sku || typeof cantidad !== "number") {
+    return res.status(422).json({
+      error: "FaltanCampos",
+      message: "sku y cantidad (number) son requeridos"
+    });
   }
 
-  const carrito = getCarritos().find(c => c.id === carritoId);
-  if (!carrito) return res.status(404).json({ error: "CarritoNoExiste" });
-  if (carrito.estado !== "ABIERTO") return res.status(409).json({ error: "CarritoCerrado" });
+  // ❗ cantidad > 0
+  if (cantidad <= 0) {
+    return res.status(422).json({
+      error: "CantidadInvalida",
+      message: "La cantidad debe ser mayor a cero."
+    });
+  }
 
+  const carrito = carritos.find(c => c.id === carritoId);
+  if (!carrito) return res.status(404).json({ error: "CarritoNoExiste" });
+
+  if (carrito.estado !== "ABIERTO") {
+    return res.status(409).json({
+      error: "CarritoCerrado",
+      message: "No se puede modificar un carrito cerrado"
+    });
+  }
+
+  // ❗ validar existencia del SKU
   const producto = productosMock[sku];
-  if (!producto) return res.status(404).json({ error: "ProductoNoEncontrado" });
+  if (!producto) {
+    return res.status(404).json({
+      error: "ProductoNoEncontrado",
+      message: `El SKU '${sku}' no existe en el catálogo`
+    });
+  }
 
   try {
     const reserva = await reservarStock(sku, cantidad, carritoId);
@@ -59,19 +86,28 @@ async function agregarItem(req, res) {
       });
     }
 
-    return res.status(201).json(carrito.items.find(i => i.sku === sku));
+    return res.status(201).json({
+      sku,
+      cantidad,
+      precio: producto.precio
+    });
 
   } catch (err) {
-    return res.status(409).json({ error: "ReservaFallida", message: err.message });
+    return res.status(409).json({
+      error: "ReservaFallida",
+      message: err.message
+    });
   }
 }
 
 // Ver carrito
 function verCarrito(req, res) {
-  const carrito = getCarritos().find(c => c.id === req.params.id);
+  const carritoId = req.params.id;
+  const carrito = carritos.find(c => c.id === carritoId);
+
   if (!carrito) return res.status(404).json({ error: "CarritoNoExiste" });
 
-  const subtotal = carrito.items.reduce((acc, i) => acc + i.precio * i.cantidad, 0);
+  const subtotal = carrito.items.reduce((acc, it) => acc + it.precio * it.cantidad, 0);
   const impuestos = Math.round(subtotal * 0.21);
   const total = subtotal + impuestos;
 
@@ -79,7 +115,11 @@ function verCarrito(req, res) {
     id: carrito.id,
     usuarioId: carrito.usuarioId,
     estado: carrito.estado,
-    items: carrito.items,
+    items: carrito.items.map(i => ({
+      sku: i.sku,
+      cantidad: i.cantidad,
+      precio: i.precio
+    })),
     subtotal,
     impuestos,
     total
