@@ -58,12 +58,12 @@ src/
 ```
 Usuario
    │
-   ├─ POST /carts              → crear carrito
-   ├─ POST /carts/:id/items    → agregar productos
-   ├─ DELETE /carts/:id/items/:sku  → eliminar un item del carrito
-   ├─ GET  /carts/:id          → ver carrito
-   ├─ POST /orders/:carritoId  → cerrar carrito + generar orden
-   └─GET /orders               → lista el historial de órdenes
+   ├─ POST /carts                    → crear carrito
+   ├─ POST /carts/:id/items          → agregar productos
+   ├─ DELETE /carts/:id/items/:sku   → eliminar un item del carrito
+   ├─ GET  /carts/:id                → ver carrito
+   ├─ POST /orders/:carritoId        → cerrar carrito + generar orden
+   └─GET /orders                     → lista el historial de órdenes
 ```
 
 
