@@ -26,7 +26,7 @@ MySQL (pendiente de integración real)
 
 
 ## 📁 Estructura del proyecto
-src/
+```src/
 │
 ├── controllers/         → lógica de carrito y órdenes
 │   ├── cartController.js
@@ -49,11 +49,12 @@ src/
 │   └── index.html
 │  
 └── config/              → conexión a bases de datos (pendiente)
+```
 
 
 
 ## 🧠 Flujo del módulo Carrito → Orden
-Usuario
+```Usuario
    │
    ├─ POST /carts              → crear carrito
    ├─ POST /carts/:id/items    → agregar productos
@@ -61,6 +62,7 @@ Usuario
    ├─ GET  /carts/:id          → ver carrito
    ├─ POST /orders/:carritoId  → cerrar carrito + generar orden
    └─GET /orders               → lista el historial de órdenes
+```
 
 
 
