@@ -1,18 +1,24 @@
 // src/controllers/cartController.js
-const { reservarStock } = require("../services/inventarioService");
+const { reservarStock, cancelarReservaSimulada } = require("../services/inventarioService");
 const { getCarritos } = require("../data/carritoStore");
 
+// Referencia única al store en memoria
 let carritos = getCarritos();
 
-// Mock catálogo para validar SKU y precio
+// --- MOCK DE CATÁLOGO ---
 const productosMock = {
-  "BK-001": { sku: "BK-001", nombre: "Libro POO", precio: 15000 },
-  "BK-002": { sku: "BK-002", nombre: "Cuaderno", precio: 2500 }
+  "BK-001": { sku: "BK-001", nombre: "Libro POO Avanzado", precio: 15000 },
+  "TE-002": { sku: "TE-002", nombre: "Teclado Mecánico", precio: 45000 },
+  "TE-003": { sku: "TE-003", nombre: "Mouse Gamer", precio: 12000 },
+  "RO-004": { sku: "RO-004", nombre: "Remera Dev", precio: 8000 },
+  "BK-005": { sku: "BK-005", nombre: "Clean Code", precio: 22000 },
+  "TE-006": { sku: "TE-006", nombre: 'Monitor 24"', precio: 120000 }
 };
 
 // Crear carrito
 function crearCarrito(req, res) {
   const { usuarioId } = req.body;
+
   if (!usuarioId) {
     return res.status(422).json({
       error: "FaltanCampos",
@@ -27,8 +33,12 @@ function crearCarrito(req, res) {
     items: []
   };
 
-  carritos.push(nuevoCarrito);
-  res.status(201).json({ id: nuevoCarrito.id, estado: nuevoCarrito.estado });
+  getCarritos().push(nuevoCarrito);
+
+  return res.status(201).json({
+    id: nuevoCarrito.id,
+    estado: nuevoCarrito.estado
+  });
 }
 
 // Agregar ítem
@@ -43,7 +53,6 @@ async function agregarItem(req, res) {
     });
   }
 
-  // ❗ cantidad > 0
   if (cantidad <= 0) {
     return res.status(422).json({
       error: "CantidadInvalida",
@@ -52,7 +61,9 @@ async function agregarItem(req, res) {
   }
 
   const carrito = carritos.find(c => c.id === carritoId);
-  if (!carrito) return res.status(404).json({ error: "CarritoNoExiste" });
+  if (!carrito) {
+    return res.status(404).json({ error: "CarritoNoExiste" });
+  }
 
   if (carrito.estado !== "ABIERTO") {
     return res.status(409).json({
@@ -61,7 +72,6 @@ async function agregarItem(req, res) {
     });
   }
 
-  // ❗ validar existencia del SKU
   const producto = productosMock[sku];
   if (!producto) {
     return res.status(404).json({
@@ -82,6 +92,7 @@ async function agregarItem(req, res) {
         sku,
         cantidad,
         precio: producto.precio,
+        nombre: producto.nombre,
         reservaId: reserva.reservaId
       });
     }
@@ -100,6 +111,29 @@ async function agregarItem(req, res) {
   }
 }
 
+// Eliminar ítem + restaurar stock
+function eliminarItem(req, res) {
+  const carritoId = req.params.id;
+  const sku = req.params.sku;
+
+  const carrito = getCarritos().find(c => c.id === carritoId);
+  if (!carrito) return res.status(404).json({ error: "CarritoNoExiste" });
+
+  const itemABorrar = carrito.items.find(item => item.sku === sku);
+  if (!itemABorrar) {
+    return res.status(404).json({ error: "ItemNoEncontrado" });
+  }
+
+  cancelarReservaSimulada(itemABorrar.reservaId, itemABorrar.sku, itemABorrar.cantidad);
+
+  carrito.items = carrito.items.filter(item => item.sku !== sku);
+
+  return res.status(200).json({
+    message: "Item eliminado y stock restaurado",
+    items: carrito.items
+  });
+}
+
 // Ver carrito
 function verCarrito(req, res) {
   const carritoId = req.params.id;
@@ -107,7 +141,20 @@ function verCarrito(req, res) {
 
   if (!carrito) return res.status(404).json({ error: "CarritoNoExiste" });
 
-  const subtotal = carrito.items.reduce((acc, it) => acc + it.precio * it.cantidad, 0);
+  const itemsConNombre = carrito.items.map(item => {
+    const datos = productosMock[item.sku];
+    return {
+      sku: item.sku,
+      cantidad: item.cantidad,
+      precio: item.precio,
+      nombre: datos ? datos.nombre : item.sku
+    };
+  });
+
+  const subtotal = carrito.items.reduce(
+    (acc, i) => acc + i.precio * i.cantidad,
+    0
+  );
   const impuestos = Math.round(subtotal * 0.21);
   const total = subtotal + impuestos;
 
@@ -115,15 +162,16 @@ function verCarrito(req, res) {
     id: carrito.id,
     usuarioId: carrito.usuarioId,
     estado: carrito.estado,
-    items: carrito.items.map(i => ({
-      sku: i.sku,
-      cantidad: i.cantidad,
-      precio: i.precio
-    })),
+    items: itemsConNombre,
     subtotal,
     impuestos,
     total
   });
 }
 
-module.exports = { crearCarrito, agregarItem, verCarrito };
+module.exports = {
+  crearCarrito,
+  agregarItem,
+  verCarrito,
+  eliminarItem
+};

@@ -1,25 +1,28 @@
 // src/controllers/orderController.js
-let ordenes = [];
+const { getCarritos } = require("../data/carritoStore");
+
+let ordenes = []; // almacenamiento temporal
 
 function crearOrden(req, res) {
   const { carrito } = req.body;
 
+  // Validación: falta carrito
   if (!carrito) {
-    return res.status(422).json({
-      error: "FaltanCampos",
-      message: "Se requiere carrito para generar orden"
+    return res.status(404).json({
+      error: "CarritoNoEncontrado",
+      message: "No se encontró el carrito para generar la orden"
     });
   }
 
-  // ❗ Validar carrito vacío
-  if (!carrito.items || carrito.items.length === 0) {
+  // Validación: carrito vacío
+  if (!Array.isArray(carrito.items) || carrito.items.length === 0) {
     return res.status(409).json({
       error: "CarritoVacio",
       message: "No se puede generar una orden con un carrito vacío."
     });
   }
 
-  // ❗ Evitar orden duplicada
+  // Validación: orden duplicada
   const yaExiste = ordenes.find(o => o.carritoId === carrito.id);
   if (yaExiste) {
     return res.status(409).json({
@@ -28,6 +31,7 @@ function crearOrden(req, res) {
     });
   }
 
+  // Calcular totales
   const subtotal = carrito.items.reduce((acc, it) => acc + it.precio * it.cantidad, 0);
   const impuestos = Math.round(subtotal * 0.21);
   const total = subtotal + impuestos;
@@ -35,7 +39,8 @@ function crearOrden(req, res) {
   const nuevaOrden = {
     id: "o" + Math.floor(Math.random() * 999999),
     carritoId: carrito.id,
-    items: carrito.items,
+    fecha: new Date().toISOString(),
+    items: [...carrito.items],
     subtotal,
     impuestos,
     total,
@@ -44,10 +49,21 @@ function crearOrden(req, res) {
 
   ordenes.push(nuevaOrden);
 
+  // Cerrar carrito y vaciar items
+  const original = getCarritos().find(c => c.id === carrito.id);
+  if (original) {
+    original.estado = "CERRADO";
+    original.items = [];
+  }
+
   return res.status(201).json({
     id: nuevaOrden.id,
     total
   });
 }
 
-module.exports = { crearOrden };
+function obtenerOrdenes(req, res) {
+  return res.status(200).json(ordenes);
+}
+
+module.exports = { crearOrden, obtenerOrdenes };
