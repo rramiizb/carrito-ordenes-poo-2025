@@ -195,11 +195,12 @@ Debe devolver:
 }
 ```
 
-Tu módulo lo usa para:
+El módulo lo usa para:
 
 validar que el producto existe
 
 obtener su precio
+
 
 🟧 2. Módulo Inventario
 
