@@ -270,7 +270,7 @@ MySQL real              🔶 Pendiente
 
 Validaciones extra      🔶 Pendiente
 
-README                   ✔ Completo
+README                  ✔ Completo
 ```
 
 ## ✔ Próximos pasos
