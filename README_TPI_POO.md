@@ -1,10 +1,5 @@
 # Carrito & Órdenes — Módulo del TP Integrador (POO 2025)
 
-Integrantes del Grupo:
-   Löbl Vidal Bruno Leonel
-   Zabala Ramiro
-   Piñeyro Federico Ramón
-
 Este proyecto corresponde al Trabajo Práctico Integrador de la materia Programación Orientada a Objetos 2025. Se encarga de gestionar el carrito de compras; las reservas de stock; la generación de órdenes con cálculo automático de precios, impuestos y totales; y el historial de órdenes del usuario.
 
 
@@ -244,3 +239,6 @@ Integrar con APIs reales de Inventario y Catálogo
 
 
 ## 👥 Equipo
+Löbl Vidal Bruno Leonel
+Zabala Ramiro
+Piñeyro Federico Ramón
