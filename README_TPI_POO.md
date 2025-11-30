@@ -26,7 +26,8 @@ MySQL (pendiente de integración real)
 
 
 ## 📁 Estructura del proyecto
-```src/
+```
+src/
 │
 ├── controllers/         → lógica de carrito y órdenes
 │   ├── cartController.js
@@ -54,7 +55,8 @@ MySQL (pendiente de integración real)
 
 
 ## 🧠 Flujo del módulo Carrito → Orden
-```Usuario
+```
+Usuario
    │
    ├─ POST /carts              → crear carrito
    ├─ POST /carts/:id/items    → agregar productos
@@ -68,38 +70,47 @@ MySQL (pendiente de integración real)
 
 ## 📌 Endpoints principales
 🟦 Crear carrito
+```
 POST /carts
 {
   "usuarioId": 1
 }
+```
 
 🟩 Agregar producto
+```
 POST /carts/:id/items
 {
   "sku": "BK-001",
   "cantidad": 2
 }
+```
 
 🟨 Ver carrito
+```
 GET /carts/:id
+```
 
 🟥 Crear orden
+```
 POST /orders/:carritoId
+```
 
 
 
 ## 🧪 Mini Tutorial Thunder Client
 1️⃣ Crear carrito
-
+```
 Método: POST
 Body:
 
 {
   "usuarioId": 1
 }
+```
 
 2️⃣ Agregar producto
-
+```
 Método: POST
 Body:
 
@@ -107,37 +118,54 @@ Body:
   "sku": "BK-001",
   "cantidad": 2
 }
+```
 
 3️⃣ Ver carrito
-
+```
 Método: GET
 💡 Body vacío
+```
 
 4️⃣ Crear orden
-
+```
 Método: POST
 💡 Body vacío
+```
+
 
 ## 🛡️ Validaciones implementadas
 
 Estas ya están funcionando dentro del código:
 
 ✔ El carrito no puede crearse sin usuarioId
+
 ✔ El SKU debe existir en catálogo simulado
+
 ✔ No se puede agregar ítems a un carrito cerrado
+
 ✔ No se puede agregar ítems sin sku y cantidad
+
 ✔ No se puede reservar stock si no hay stock suficiente
+
 ✔ El cierre del carrito calcula subtotal + IVA
+
 ✔ La orden se genera correctamente con total e ID
+
+
 ## 🛠 Validaciones pendientes (a agregar)
 
 Estas validaciones fueron planificadas pero todavía no están en el código:
 
 🔶 No generar orden si el carrito está vacío
+
 🔶 No permitir más de una orden por el mismo carrito
+
 🔶 No permitir cantidad menor o igual a 0
+
 🔶 Mejorar mensaje de SKU inexistente
+
 🔶 Evitar cerrar dos veces el mismo carrito
+
 
 (Estas validaciones son cortas y fáciles de copiar/pegar.)
 
@@ -146,23 +174,26 @@ Estas validaciones fueron planificadas pero todavía no están en el código:
 
 ## 🔗 Integración con otros módulos
 
-Tu módulo debe conectarse a:
+Debe conectarse a:
 
 🟪 1. Módulo Catálogo
 
 Debe proveer:
 
 ✔ Obtener datos de un producto
+```
 GET /products/:sku
+```
 
 
 Debe devolver:
-
+```
 {
   "sku": "BK-001",
   "nombre": "Libro POO",
   "precio": 15000
 }
+```
 
 Tu módulo lo usa para:
 
@@ -175,12 +206,14 @@ obtener su precio
 Debe proveer:
 
 ✔ Reservar stock
+```
 POST /inventory/reservations
 {
   "sku": "BK-001",
   "cantidad": 2,
   "carritoId": "c123"
 }
+```
 
 ✔ Confirmar o cancelar reservas
 
@@ -202,8 +235,7 @@ ordenes
 
 
 ## 🗺️ Diagrama general de módulos
-
-
+```
    Catálogo  ──────┐
                    │   (datos de productos)
                    ▼
@@ -211,21 +243,32 @@ Usuario → Carrito → Órdenes
                    ▲
                    │   (reservas de stock)
    Inventario ─────┘
+```
 
 
 
 ## 🎯 Estado actual del módulo
 
 Sección	         Estado
+
 Carritos		✔ Completo
+
 Items	        	✔ Completo
+
 Cálculo totales		✔ Completo
+
 Cierre de carrito	✔ Funcional
+
 Creación de órdenes	✔ Funcionando
+
 Integración inventario	🔶 Simulada
+
 Integración catálogo	🔶 Simulada
+
 MySQL real		🔶 Pendiente
+
 Validaciones extra	🔶 Pendiente
+
 README			✔ Completo
 
 
@@ -241,6 +284,9 @@ Integrar con APIs reales de Inventario y Catálogo
 
 
 ## 👥 Equipo
+
 Löbl Vidal Bruno Leonel
+
 Zabala Ramiro
+
 Piñeyro Federico Ramón
