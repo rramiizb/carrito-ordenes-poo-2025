@@ -57,12 +57,18 @@ async function initApp() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ usuarioId: USER_ID })
         });
+
+        if (!res.ok) throw new Error("No se pudo crear carrito");
+
         const data = await res.json();
-        currentCartId = data.id || data.carritoId; 
+        currentCartId = data.id;
+        console.log("Carrito iniciado:", currentCartId);
     } catch (e) {
+        console.error(e);
         showToast("Error conectando al servidor.");
     }
 }
+
 
 function hideAll() {
     ['view-catalog', 'view-cart', 'view-success', 'view-orders'].forEach(id => {
@@ -177,13 +183,13 @@ async function renderCart() {
                 </div>
             `}).join('');
 
-            const subtotal = cart.subtotal || items.reduce((acc, i) => acc + (i.precio * i.cantidad), 0);
-            const impuestos = cart.impuestos || subtotal * 0.21;
-            const total = cart.total || subtotal + impuestos;
+            const subtotal = items.reduce((acc, i) => acc + (i.precio || 0) * (i.cantidad || 1), 0);
+            const impuestos = subtotal * 0.21; // 21% de IVA
+            const total = subtotal + impuestos;
 
-            document.getElementById('summary-subtotal').innerText = `$${subtotal.toLocaleString()}`;
-            document.getElementById('summary-tax').innerText = `$${impuestos.toLocaleString()}`;
-            document.getElementById('summary-total').innerText = `$${total.toLocaleString()}`;
+document.getElementById('summary-subtotal').innerText = `$${subtotal.toLocaleString()}`;
+document.getElementById('summary-tax').innerText = `$${impuestos.toLocaleString()}`;
+document.getElementById('summary-total').innerText = `$${total.toLocaleString()}`;
         }
         lucide.createIcons();
     } catch (e) {

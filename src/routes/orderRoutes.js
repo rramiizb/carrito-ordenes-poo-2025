@@ -1,56 +1,35 @@
-// src/routes/orderRoutes.js
-console.log(">> orderRoutes.js cargado");
-
 const express = require("express");
 const router = express.Router();
-
 const { crearOrden, obtenerOrdenes } = require("../controllers/orderController");
 const { cerrarCarrito } = require("../services/cerrarCarritoService");
 
-// Evitar req.body undefined
-router.use((req, res, next) => {
-  if (!req.body) req.body = {};
-  next();
-});
+// Obtener todas las órdenes
+router.get("/", obtenerOrdenes);
 
-// GET /orders
-router.get("/orders", obtenerOrdenes);
+// Crear orden a partir de un carrito
+router.post("/:carritoId", async (req, res) => {
+    try {
+        const carritoId = req.params.carritoId;
+        const carritoCerrado = await cerrarCarrito(carritoId);
 
-// POST /orders/:carritoId
-router.post("/orders/:carritoId", (req, res) => {
-  try {
-    const carritoId = req.params.carritoId;
+        if (!carritoCerrado || carritoCerrado.error) {
+            return res.status(404).json({ error: carritoCerrado?.error || "CarritoNoExiste" });
+        }
 
-    // 1) Intentar cerrar el carrito
-    const carritoCerrado = cerrarCarrito(carritoId);
+        if (!carritoCerrado.items || carritoCerrado.items.length === 0) {
+            return res.status(409).json({ error: "CarritoVacio", message: "No se puede generar orden de un carrito vacío" });
+        }
 
-    if (!carritoCerrado) {
-      return res.status(404).json({ error: "CarritoNoExiste" });
+        // Aseguramos que req.body exista
+        req.body = req.body || {};
+        req.body.carrito = carritoCerrado;
+
+        // Llamamos a crearOrden con req y res
+        return crearOrden(req, res);
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ error: "ErrorInterno", message: err.message });
     }
-
-    // 2) Validar carrito vacío
-    if (!carritoCerrado.items || carritoCerrado.items.length === 0) {
-      return res.status(409).json({
-        error: "CarritoVacio",
-        message: "No se puede generar orden de un carrito vacío"
-      });
-    }
-
-    // 3) Crear orden usando fakeReq
-    const fakeReq = {
-      body: { carrito: carritoCerrado },
-      params: req.params
-    };
-
-    return crearOrden(fakeReq, res);
-
-  } catch (err) {
-    console.error("Error en POST /orders:", err);
-    return res.status(500).json({
-      error: "ErrorInterno",
-      message: err.message
-    });
-  }
 });
 
 module.exports = router;

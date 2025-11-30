@@ -1,42 +1,56 @@
 // src/services/inventarioService.js
-// Simulación simple del módulo Inventario
-// reserveStock devuelve un objeto { reservaId } o lanza error si no hay stock.
+const db = require("../../db");
 
-const stockSimulado = {
-  "BK-001": 10, 
-  "TE-002": 2,  
-  "TE-003": 5,   
-  "RO-004": 3,   
-  "BK-005": 3,   
-  "TE-006": 1
-};
+async function reservarStock(sku, cantidad, carritoId) {
+  if (!sku || typeof cantidad !== "number" || cantidad <= 0) {
+    throw new Error("Cantidad inválida");
+  }
 
-function reservarStock(sku, cantidad, carritoId) {
-  console.log(`[Inventario] Solicitud: ${sku} x${cantidad} (Stock actual: ${stockSimulado[sku] ?? 0})`);
-  return new Promise((resolve, reject) => {
-    const disponible = stockSimulado[sku] ?? 0;
-    if (cantidad <= 0) return reject(new Error("Cantidad inválida"));
-    if (disponible >= cantidad) {
-      // Reducimos stock simulado (reserva temporal)
-      stockSimulado[sku] = disponible - cantidad;
-      console.log(`[Inventario] Reserva OK. Nuevo stock de ${sku}: ${stockSimulado[sku]}`);
-      // Creamos una reservaId simple
-      const reservaId = `r-${sku}-${Date.now()}`;
-      // Simulamos async
-      return resolve({ reservaId, sku, cantidad, expiraEn: new Date(Date.now() + 15*60*1000).toISOString() });
-    } else {
-      console.log(`[Inventario] Stock insuficiente para ${sku}`);
-      return reject(new Error("StockInsuficiente"));
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    // SELECT ... FOR UPDATE para evitar race conditions
+    const [rows] = await conn.query("SELECT stock FROM products WHERE sku = ? FOR UPDATE", [sku]);
+    const disponible = (rows[0] && rows[0].stock) ? rows[0].stock : 0;
+
+    if (disponible < cantidad) {
+      await conn.rollback();
+      throw new Error("StockInsuficiente");
     }
-  });
-}
 
-function cancelarReservaSimulada(reservaId, sku, cantidad) {
-  // Para simplificar, devolvemos el stock (solo en memoria)
-  if (sku && typeof cantidad === "number") {
-    stockSimulado[sku] = (stockSimulado[sku] ?? 0) + cantidad;
-    console.log(`[Inventario] Reserva cancelada. Stock devuelto a ${sku}`);
+    const nuevoStock = disponible - cantidad;
+    await conn.query("UPDATE products SET stock = ? WHERE sku = ?", [nuevoStock, sku]);
+
+    await conn.commit();
+
+    const reservaId = `r-${sku}-${Date.now()}`;
+    console.log(`[Inventario] Reserva OK ${sku} x${cantidad}. ReservaId=${reservaId} (stock restante: ${nuevoStock})`);
+
+    return { reservaId, sku, cantidad, expiraEn: new Date(Date.now() + 15*60*1000).toISOString() };
+  } catch (err) {
+    try { await conn.rollback(); } catch(e){/* ignore */ }
+    throw err;
+  } finally {
+    conn.release();
   }
 }
 
-module.exports = { reservarStock, cancelarReservaSimulada };;
+async function cancelarReservaSimulada(reservaId, sku, cantidad) {
+  if (!sku || typeof cantidad !== "number" || cantidad <= 0) return;
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+    // Sumar de vuelta el stock
+    await conn.query("UPDATE products SET stock = stock + ? WHERE sku = ?", [cantidad, sku]);
+    await conn.commit();
+    console.log(`[Inventario] Reserva cancelada. Stock devuelto a ${sku} (+${cantidad})`);
+  } catch (err) {
+    try { await conn.rollback(); } catch(e){/* ignore */ }
+    console.error("Error al cancelar reserva:", err.message);
+  } finally {
+    conn.release();
+  }
+}
+
+module.exports = { reservarStock, cancelarReservaSimulada };

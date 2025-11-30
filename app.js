@@ -1,28 +1,25 @@
+// app.js
 const express = require("express");
 const app = express();
-const path = require("path"); 
+const path = require("path");
 
+// middlewares
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// --- CONFIGURACIÓN DE ARCHIVOS ESTÁTICOS ---
+// archivos estáticos
 app.use(express.static(path.join(__dirname, 'public')));
 
-// importar rutas
+// rutas
 const cartRoutes = require("./src/routes/cartRoutes");
 const orderRoutes = require("./src/routes/orderRoutes");
+app.use("/carts", cartRoutes);
+app.use("/orders", orderRoutes);
 
-// usar rutas API
-app.use(cartRoutes);
-app.use(orderRoutes);
-
-/* app.get("/", (req, res) => {
-    res.json({ mensaje: "Carrito & Órdenes funcionando!" });
-}); */
-
-// Iniciar servidor
-app.listen(3000, () => {
+// arrancar servidor
+const PORT = 3000;
+app.listen(PORT, () => {
     console.log("------------------------------------------------");
-    console.log("Servidor iniciado correctamente");
-    console.log("Abrí en tu navegador: http://localhost:3000");
+    console.log(`Servidor iniciado correctamente en http://localhost:${PORT}`);
     console.log("------------------------------------------------");
 });
