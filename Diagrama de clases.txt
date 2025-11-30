@@ -1,0 +1,61 @@
+classDiagram
+    %% Relaciones
+    Carrito "1" *-- "0..*" ItemCarrito : contiene
+    Orden "1" -- "1" Carrito : generada_desde
+    ItemCarrito "1" -- "1" Producto : referencia
+    Orden ..> ServicioInventario : valida_stock
+    
+    class Carrito {
+        +String id
+        +String usuarioId
+        +String estado
+        +List~ItemCarrito~ items
+        +crear(usuarioId)
+        +agregarItem(sku, cantidad)
+        +eliminarItem(sku)
+        +calcularSubtotal() Double
+        +calcularTotal() Double
+        +cerrar()
+    }
+
+    class ItemCarrito {
+        +String sku
+        +String nombre
+        +Integer cantidad
+        +Double precioUnitario
+        +String reservaId
+        +calcularSubtotal() Double
+    }
+
+    class Orden {
+        +String id
+        +String carritoId
+        +String usuarioId
+        +Date fecha
+        +String estado
+        +Double subtotal
+        +Double impuestos
+        +Double total
+        +List~ItemCarrito~ items
+        +crear(carrito)
+        +confirmarPago()
+    }
+
+    class Producto {
+        +String sku
+        +String nombre
+        +Double precio
+        +String categoria
+        +String imagenUrl
+    }
+
+    class ServicioInventario {
+        <<Service>>
+        +reservarStock(sku, cantidad) : String
+        +cancelarReserva(reservaId, sku, cantidad) : Void
+        -stockSimulado : Map
+    }
+
+    %% Notas explicativas
+    note for Carrito "Estado: ABIERTO, CERRADO"
+    note for Orden "Estado: PENDIENTE_PAGO, PAGADA"
