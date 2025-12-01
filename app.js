@@ -17,9 +17,8 @@ app.use("/carts", cartRoutes);
 app.use("/orders", orderRoutes);
 
 // arrancar servidor
-const PORT = 8050;
-app.listen(PORT, () => {
-    console.log("------------------------------------------------");
-    console.log(`Servidor iniciado correctamente en http://localhost:${PORT}`);
-    console.log("------------------------------------------------");
+const PORT = process.env.PORT || 8050;
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Servidor iniciado correctamente en http://0.0.0.0:${PORT}`);
 });
