@@ -17,7 +17,7 @@ app.use("/carts", cartRoutes);
 app.use("/orders", orderRoutes);
 
 // arrancar servidor
-const PORT = 3000;
+const PORT = 8050;
 app.listen(PORT, () => {
     console.log("------------------------------------------------");
     console.log(`Servidor iniciado correctamente en http://localhost:${PORT}`);
