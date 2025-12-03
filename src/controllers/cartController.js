@@ -12,8 +12,7 @@ async function crearCarrito(req, res) {
     if (!usuarioId)
       return res.status(422).json({ error: "FaltanCampos", message: "usuarioId requerido" });
 
-
-    // CORREGIDO: usar db y capturar result
+    // Crear carrito activo
     const [result] = await db.query(
       "INSERT INTO carts (id_usuario, estado) VALUES (?, 'activo')",
       [usuarioId]
@@ -40,34 +39,24 @@ async function agregarItem(req, res) {
   try {
     const carritoId = req.params.id;
     const { product_id, cantidad } = req.body;
-
     const cantidadNum = Number(cantidad);
-
     if (!product_id || isNaN(cantidadNum)) {
-      return res.status(422).json({
-        error: "FaltanCampos",
-        message: "product_id y cantidad numérica son requeridos"});
+      return res.status(422).json({ error: "FaltanCampos", message: "product_id y cantidad numérica son requeridos"});
     }
 
-    // validar carrito existe y está abierto
     const [carritos] = await db.query("SELECT * FROM carts WHERE id = ?", [carritoId]);
     if (!carritos[0]) return res.status(404).json({ error: "CarritoNoExiste" });
     if (carritos[0].estado !== "ABIERTO") return res.status(409).json({ error: "CarritoCerrado" });
 
-    // validar producto y stock
     const [prods] = await db.query("SELECT id, precio, stock, nombre FROM products WHERE id = ?", [product_id]);
     const producto = prods[0];
     if (!producto) return res.status(404).json({ error: "ProductoNoEncontrado" });
+    if (producto.stock < cantidad) return res.status(409).json({ error: "ReservaFallida", message: "Stock insuficiente" });
 
-    if (producto.stock < cantidad) {
-      return res.status(409).json({ error: "ReservaFallida", message: "Stock insuficiente" });
-    }
-
-    // reservar stock (simple: restar)
+    // Restar stock
     await db.query("UPDATE products SET stock = stock - ? WHERE id = ?", [cantidad, product_id]);
 
-    // insertar o actualizar item en cart_items
-    // asumimos columnas: id, cart_id, product_id, cantidad, precio_unitario
+    // Insertar o actualizar item
     await db.query(
       `INSERT INTO cart_items (cart_id, product_id, cantidad, precio_unitario)
        VALUES (?, ?, ?, ?)
@@ -75,17 +64,13 @@ async function agregarItem(req, res) {
       [carritoId, product_id, cantidad, producto.precio, cantidad]
     );
 
-    return res.status(201).json({
-      product_id,
-      cantidad,
-      nombre: producto.nombre,
-      precio: Number(producto.precio)
-    });
+    return res.status(201).json({ product_id, cantidad, nombre: producto.nombre, precio: Number(producto.precio) });
   } catch (err) {
     console.error("agregarItem:", err);
     return res.status(500).json({ error: "ErrorInterno" });
   }
 }
+
 
 /**
  * Ver carrito
