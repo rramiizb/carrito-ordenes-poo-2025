@@ -93,57 +93,33 @@ async function addToCart(sku) {
         // 1️⃣ Asegurarse de que hay un carrito válido
         if (!currentCartId) {
             showToast("Inicializando carrito...");
-            await createNewCart();
+            const nuevoCarrito = await createNewCart();
+            if (!nuevoCarrito) return; // si falla, salimos
         }
 
-        // 2️⃣ Obtener carrito actual
-        let carritoRes = await fetch(`/carts/${currentCartId}`);
-        if (carritoRes.status === 404) {
-            // Solo crear uno nuevo si realmente no existe
-            await createNewCart();
-            carritoRes = await fetch(`/carts/${currentCartId}`);
-        }
+        // 2️⃣ Agregar item al carrito directamente usando POST
+        const res = await fetch(`/carts/${currentCartId}/items`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ product_id: producto.id, cantidad: 1 })
+        });
 
-        if (!carritoRes.ok) throw new Error("No se pudo obtener el carrito");
-
-        const carritoData = await carritoRes.json();
-        const carritoItems = carritoData.items || [];
-
-        // 3️⃣ Verificar si el producto ya está en el carrito
-        const itemExistente = carritoItems.find(i => i.product_id === producto.id);
-
-        let res;
-        if (itemExistente) {
-            // Actualizar cantidad si ya existe
-            res = await fetch(`/carts/${currentCartId}/items/${itemExistente.id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ cantidad: itemExistente.cantidad + 1 })
-            });
-        } else {
-            // Agregar nuevo producto al carrito
-            res = await fetch(`/carts/${currentCartId}/items`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ product_id: producto.id, cantidad: 1 })
-            });
-        }
-
-        // 4️⃣ Revisar respuesta
         if (res.ok) {
             showToast("¡Producto agregado!");
             const badge = document.getElementById('badge-count');
             badge.innerText = parseInt(badge.innerText || 0) + 1;
             badge.classList.remove('hidden');
         } else if (res.status === 409) {
-            showToast("El producto ya está en el carrito");
+            // Item ya existe → actualizar cantidad
+            await fetch(`/carts/${currentCartId}/items/${producto.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cantidad: 1 }) // sumar 1
+            });
+            showToast("Cantidad actualizada");
         } else {
-            let errMsg = "Error al agregar";
-            try {
-                const err = await res.json();
-                errMsg = err.message || errMsg;
-            } catch {}
-            showToast(errMsg);
+            const err = await res.json().catch(() => ({}));
+            showToast(err.message || "Error al agregar");
         }
 
     } catch (e) {
@@ -151,6 +127,7 @@ async function addToCart(sku) {
         showToast("Error de conexión");
     }
 }
+
 
 
 
