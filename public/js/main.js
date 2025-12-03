@@ -97,22 +97,19 @@ async function addToCart(sku) {
         if (!producto) return showToast("Producto no encontrado");
 
         // 2️⃣ Intentar obtener los items del carrito
-        let carritoRes = await fetch(`/carts/${currentCartId}`);
-        
-        // Si el carrito no existe en el backend, creamos uno nuevo
+        let carritoRes = await fetch(`/carts/${currentCartId}/items`);
+
         if (carritoRes.status === 404) {
             await createNewCart();
-            carritoRes = await fetch(`/carts/${currentCartId}`);
+            carritoRes = await fetch(`/carts/${currentCartId}/items`);
         }
 
-        let carritoData = {};
+        let carritoItems = [];
         try {
-            carritoData = await carritoRes.json();
+            carritoItems = await carritoRes.json();
         } catch (e) {
-            carritoData = { items: [] };
+            carritoItems = [];
         }
-
-        const carritoItems = carritoData.items || [];
 
         // 3️⃣ Verificar si el producto ya está en el carrito
         const itemExistente = carritoItems.find(i => i.product_id === producto.id);
@@ -137,9 +134,17 @@ async function addToCart(sku) {
         // 4️⃣ Revisar respuesta
         if (res.ok) {
             showToast("¡Producto agregado!");
+            
+            // Actualizar badge automáticamente
             const badge = document.getElementById('badge-count');
-            badge.innerText = parseInt(badge.innerText || 0) + 1;
+            const totalItems = carritoItems.reduce((sum, i) => sum + i.cantidad, 0) + (itemExistente ? 1 : 1);
+            badge.innerText = totalItems;
             badge.classList.remove('hidden');
+
+            // Actualizar carrito en pantalla
+            await renderCart();
+        } else if (res.status === 409) {
+            showToast("Este producto ya existe en el carrito.");
         } else {
             let errMsg = "Error al agregar";
             try {
@@ -155,6 +160,7 @@ async function addToCart(sku) {
     }
 }
 
+
 // --- RENDERIZAR CARRITO ---
 async function renderCart() {
     hideAll();
@@ -165,22 +171,23 @@ async function renderCart() {
     const footer = document.getElementById('cart-footer');
 
     try {
-        let res = await fetch(`/carts/${currentCartId}`);
+        const res = await fetch(`/carts/${currentCartId}`);
         if (res.status === 404) {
             showToast("Carrito no encontrado, creando uno nuevo...");
             await createNewCart();
             return renderCart();
         }
+
         if (!res.ok) throw new Error("Error fetching cart");
 
-        let cartData = {};
+        let cart;
         try {
-            cartData = await res.json();
+            cart = await res.json();
         } catch (e) {
-            cartData = { items: [] };
+            cart = { items: [], subtotal: 0, impuestos: 0, total: 0 };
         }
 
-        const items = cartData.items || [];
+        const items = cart.items || [];
 
         if (!items.length) {
             list.innerHTML = `<p>Tu carrito está vacío</p>`;
@@ -188,10 +195,10 @@ async function renderCart() {
         } else {
             footer.classList.remove('hidden');
             list.innerHTML = items.map(i => {
-                const precio = Number(i.precio || i.precio_unitario || 0);
-                const cantidad = Number(i.cantidad || 0);
+                const precio = Number(i.precio) || 0;
+                const cantidad = Number(i.cantidad) || 0;
                 return `
-                    <div class="cart-item">
+                    <div class="cart-item flex justify-between border-b py-2">
                         <span>${i.nombre}</span>
                         <span>Cantidad: ${cantidad}</span>
                         <span>Precio unitario: $${precio.toFixed(2)}</span>
@@ -200,13 +207,14 @@ async function renderCart() {
                 `;
             }).join('');
 
-            document.getElementById('summary-subtotal').innerText = `$${Number(cartData.subtotal || 0).toFixed(2)}`;
-            document.getElementById('summary-tax').innerText = `$${Number(cartData.impuestos || 0).toFixed(2)}`;
-            document.getElementById('summary-total').innerText = `$${Number(cartData.total || 0).toFixed(2)}`;
+            document.getElementById('summary-subtotal').innerText = `$${Number(cart.subtotal || 0).toFixed(2)}`;
+            document.getElementById('summary-tax').innerText = `$${Number(cart.impuestos || 0).toFixed(2)}`;
+            document.getElementById('summary-total').innerText = `$${Number(cart.total || 0).toFixed(2)}`;
         }
     } catch (e) {
         console.error(e);
         list.innerHTML = '<p class="text-red-500">No se pudo cargar el carrito.</p>';
+        footer.classList.add('hidden');
     }
 }
 
