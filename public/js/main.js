@@ -84,56 +84,78 @@ function renderCatalog() {
     `).join('');
     lucide.createIcons();
 }
-
+// --- AGREGAR PRODUCTO AL CARRITO ---
 async function addToCart(sku) {
-    if (!currentCartId) return showToast("Inicializando carrito...");
-
-    const producto = CATALOGO.find(p => p.sku === sku);
-    if (!producto) return showToast("Producto no encontrado");
-
     try {
-        // Primero, revisar si el producto ya está en el carrito
-        const carritoRes = await fetch(`/carts/${currentCartId}/items`);
-        const carritoItems = await carritoRes.json();
+        // 1️⃣ Asegurarse de que hay un carrito válido
+        if (!currentCartId) {
+            showToast("Inicializando carrito...");
+            await createNewCart();
+        }
+
+        const producto = CATALOGO.find(p => p.sku === sku);
+        if (!producto) return showToast("Producto no encontrado");
+
+        // 2️⃣ Intentar obtener los items del carrito
+        let carritoRes = await fetch(`/carts/${currentCartId}`);
+        
+        // Si el carrito no existe en el backend, creamos uno nuevo
+        if (carritoRes.status === 404) {
+            await createNewCart();
+            carritoRes = await fetch(`/carts/${currentCartId}`);
+        }
+
+        let carritoData = {};
+        try {
+            carritoData = await carritoRes.json();
+        } catch (e) {
+            carritoData = { items: [] };
+        }
+
+        const carritoItems = carritoData.items || [];
+
+        // 3️⃣ Verificar si el producto ya está en el carrito
         const itemExistente = carritoItems.find(i => i.product_id === producto.id);
 
         let res;
         if (itemExistente) {
-            // Si ya existe, actualizamos la cantidad
+            // Si ya existe, actualizar cantidad
             res = await fetch(`/carts/${currentCartId}/items/${itemExistente.id}`, {
-                method: 'PATCH', 
+                method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ cantidad: itemExistente.cantidad + 1 })
             });
         } else {
-            // Si no existe, lo agregamos
+            // Si no existe, agregarlo
             res = await fetch(`/carts/${currentCartId}/items`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    product_id: producto.id,
-                    cantidad: 1
-                })
+                body: JSON.stringify({ product_id: producto.id, cantidad: 1 })
             });
         }
 
+        // 4️⃣ Revisar respuesta
         if (res.ok) {
             showToast("¡Producto agregado!");
             const badge = document.getElementById('badge-count');
             badge.innerText = parseInt(badge.innerText || 0) + 1;
             badge.classList.remove('hidden');
         } else {
-            const err = await res.json();
-            showToast(err.message || "Error al agregar");
+            let errMsg = "Error al agregar";
+            try {
+                const err = await res.json();
+                errMsg = err.message || errMsg;
+            } catch {}
+            showToast(errMsg);
         }
 
-    } catch (e) { 
+    } catch (e) {
         console.error(e);
-        showToast("Error de conexión"); 
+        showToast("Error de conexión");
     }
 }
 
-
+// --- RENDERIZAR CARRITO ---
 async function renderCart() {
     hideAll();
     document.getElementById('view-cart').classList.remove('hidden');
@@ -143,33 +165,44 @@ async function renderCart() {
     const footer = document.getElementById('cart-footer');
 
     try {
-        const res = await fetch(`/carts/${currentCartId}`);
+        let res = await fetch(`/carts/${currentCartId}`);
+        if (res.status === 404) {
+            showToast("Carrito no encontrado, creando uno nuevo...");
+            await createNewCart();
+            return renderCart();
+        }
         if (!res.ok) throw new Error("Error fetching cart");
 
-        const cart = await res.json();
-        const items = cart.items || [];
+        let cartData = {};
+        try {
+            cartData = await res.json();
+        } catch (e) {
+            cartData = { items: [] };
+        }
+
+        const items = cartData.items || [];
 
         if (!items.length) {
             list.innerHTML = `<p>Tu carrito está vacío</p>`;
             footer.classList.add('hidden');
         } else {
             footer.classList.remove('hidden');
-           list.innerHTML = items.map(i => {
-    const precio = Number(i.precio) || 0;
-    const cantidad = Number(i.cantidad) || 0;
-    return `
-        <div class="cart-item">
-            <span>${i.nombre}</span>
-            <span>Cantidad: ${cantidad}</span>
-            <span>Precio unitario: $${precio.toFixed(2)}</span>
-            <span>Subtotal: $${(cantidad * precio).toFixed(2)}</span>
-        </div>
-    `;
-}).join('');
+            list.innerHTML = items.map(i => {
+                const precio = Number(i.precio || i.precio_unitario || 0);
+                const cantidad = Number(i.cantidad || 0);
+                return `
+                    <div class="cart-item">
+                        <span>${i.nombre}</span>
+                        <span>Cantidad: ${cantidad}</span>
+                        <span>Precio unitario: $${precio.toFixed(2)}</span>
+                        <span>Subtotal: $${(cantidad * precio).toFixed(2)}</span>
+                    </div>
+                `;
+            }).join('');
 
-document.getElementById('summary-subtotal').innerText = `$${Number(cart.subtotal || 0).toFixed(2)}`;
-document.getElementById('summary-tax').innerText = `$${Number(cart.impuestos || 0).toFixed(2)}`;
-document.getElementById('summary-total').innerText = `$${Number(cart.total || 0).toFixed(2)}`;
+            document.getElementById('summary-subtotal').innerText = `$${Number(cartData.subtotal || 0).toFixed(2)}`;
+            document.getElementById('summary-tax').innerText = `$${Number(cartData.impuestos || 0).toFixed(2)}`;
+            document.getElementById('summary-total').innerText = `$${Number(cartData.total || 0).toFixed(2)}`;
         }
     } catch (e) {
         console.error(e);
@@ -177,13 +210,23 @@ document.getElementById('summary-total').innerText = `$${Number(cart.total || 0)
     }
 }
 
-// --- ORDENES ---
+// --- CREAR ORDEN ---
 async function createOrder() {
     if (!currentCartId) return alert("No hay carrito activo");
 
     try {
-        const res = await fetch(`/orders/${currentCartId}`, { method: "POST" });
-        if (!res.ok) throw new Error("ErrorInterno");
+        const res = await fetch(`/orders`, { 
+            method: "POST",
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ carritoId: currentCartId })
+        });
+
+        if (res.status === 404) {
+            showToast("Carrito no encontrado, creando uno nuevo...");
+            await createNewCart();
+            return createOrder();
+        }
+        if (!res.ok) throw new Error("Error interno");
 
         const data = await res.json();
         console.log("Orden creada:", data);
@@ -198,13 +241,14 @@ async function createOrder() {
         const nuevoCarrito = await carritoRes.json();
         currentCartId = nuevoCarrito.id;
 
-        renderCart();   // Ahora se muestra vacío
+        renderCart();   // Muestra carrito vacío
         renderOrders(); // Actualiza listado de órdenes
     } catch (e) {
         console.error(e);
         alert("Error al crear la orden");
     }
 }
+
 
 async function renderOrders() {
     hideAll();
@@ -228,6 +272,7 @@ async function renderOrders() {
         list.innerHTML = '<p class="text-red-500">No se pudo cargar las órdenes.</p>';
     }
 }
+
 
 // --- ELIMINAR ITEM ---
 function removeFromCart(sku) {
