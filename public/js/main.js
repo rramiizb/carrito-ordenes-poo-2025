@@ -87,43 +87,41 @@ function renderCatalog() {
 // --- AGREGAR PRODUCTO AL CARRITO ---
 async function addToCart(sku) {
     try {
+        const producto = CATALOGO.find(p => p.sku === sku);
+        if (!producto) return showToast("Producto no encontrado");
+
         // 1️⃣ Asegurarse de que hay un carrito válido
         if (!currentCartId) {
             showToast("Inicializando carrito...");
             await createNewCart();
         }
 
-        const producto = CATALOGO.find(p => p.sku === sku);
-        if (!producto) return showToast("Producto no encontrado");
-
-        // 2️⃣ Intentar obtener los items del carrito
-        let carritoRes = await fetch(`/carts/${currentCartId}/items`);
-
+        // 2️⃣ Obtener carrito actual
+        let carritoRes = await fetch(`/carts/${currentCartId}`);
         if (carritoRes.status === 404) {
+            // Solo crear uno nuevo si realmente no existe
             await createNewCart();
-            carritoRes = await fetch(`/carts/${currentCartId}/items`);
+            carritoRes = await fetch(`/carts/${currentCartId}`);
         }
 
-        let carritoItems = [];
-        try {
-            carritoItems = await carritoRes.json();
-        } catch (e) {
-            carritoItems = [];
-        }
+        if (!carritoRes.ok) throw new Error("No se pudo obtener el carrito");
+
+        const carritoData = await carritoRes.json();
+        const carritoItems = carritoData.items || [];
 
         // 3️⃣ Verificar si el producto ya está en el carrito
         const itemExistente = carritoItems.find(i => i.product_id === producto.id);
 
         let res;
         if (itemExistente) {
-            // Si ya existe, actualizar cantidad
+            // Actualizar cantidad si ya existe
             res = await fetch(`/carts/${currentCartId}/items/${itemExistente.id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ cantidad: itemExistente.cantidad + 1 })
             });
         } else {
-            // Si no existe, agregarlo
+            // Agregar nuevo producto al carrito
             res = await fetch(`/carts/${currentCartId}/items`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -134,17 +132,11 @@ async function addToCart(sku) {
         // 4️⃣ Revisar respuesta
         if (res.ok) {
             showToast("¡Producto agregado!");
-            
-            // Actualizar badge automáticamente
             const badge = document.getElementById('badge-count');
-            const totalItems = carritoItems.reduce((sum, i) => sum + i.cantidad, 0) + (itemExistente ? 1 : 1);
-            badge.innerText = totalItems;
+            badge.innerText = parseInt(badge.innerText || 0) + 1;
             badge.classList.remove('hidden');
-
-            // Actualizar carrito en pantalla
-            await renderCart();
         } else if (res.status === 409) {
-            showToast("Este producto ya existe en el carrito.");
+            showToast("El producto ya está en el carrito");
         } else {
             let errMsg = "Error al agregar";
             try {
@@ -161,6 +153,7 @@ async function addToCart(sku) {
 }
 
 
+
 // --- RENDERIZAR CARRITO ---
 async function renderCart() {
     hideAll();
@@ -171,25 +164,22 @@ async function renderCart() {
     const footer = document.getElementById('cart-footer');
 
     try {
-        const res = await fetch(`/carts/${currentCartId}`);
+        // 1️⃣ Obtener carrito actual
+        let res = await fetch(`/carts/${currentCartId}`);
         if (res.status === 404) {
+            // Crear un carrito nuevo si no existe
             showToast("Carrito no encontrado, creando uno nuevo...");
             await createNewCart();
-            return renderCart();
+            res = await fetch(`/carts/${currentCartId}`);
         }
 
-        if (!res.ok) throw new Error("Error fetching cart");
+        if (!res.ok) throw new Error("No se pudo obtener el carrito");
 
-        let cart;
-        try {
-            cart = await res.json();
-        } catch (e) {
-            cart = { items: [], subtotal: 0, impuestos: 0, total: 0 };
-        }
-
+        const cart = await res.json();
         const items = cart.items || [];
 
-        if (!items.length) {
+        // 2️⃣ Renderizar items
+        if (items.length === 0) {
             list.innerHTML = `<p>Tu carrito está vacío</p>`;
             footer.classList.add('hidden');
         } else {
@@ -198,7 +188,7 @@ async function renderCart() {
                 const precio = Number(i.precio) || 0;
                 const cantidad = Number(i.cantidad) || 0;
                 return `
-                    <div class="cart-item flex justify-between border-b py-2">
+                    <div class="cart-item">
                         <span>${i.nombre}</span>
                         <span>Cantidad: ${cantidad}</span>
                         <span>Precio unitario: $${precio.toFixed(2)}</span>
@@ -211,46 +201,52 @@ async function renderCart() {
             document.getElementById('summary-tax').innerText = `$${Number(cart.impuestos || 0).toFixed(2)}`;
             document.getElementById('summary-total').innerText = `$${Number(cart.total || 0).toFixed(2)}`;
         }
+
     } catch (e) {
         console.error(e);
         list.innerHTML = '<p class="text-red-500">No se pudo cargar el carrito.</p>';
-        footer.classList.add('hidden');
     }
 }
+
 
 // --- CREAR ORDEN ---
 async function createOrder() {
     if (!currentCartId) return alert("No hay carrito activo");
 
     try {
-        const res = await fetch(`/orders`, { 
+        // 1️⃣ Intentar crear la orden con el carrito actual
+        let res = await fetch(`/orders`, {
             method: "POST",
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ carritoId: currentCartId })
+            body: JSON.stringify({ cartId: currentCartId })
         });
 
+        // 2️⃣ Si el carrito no existe en el backend, crear uno nuevo
         if (res.status === 404) {
             showToast("Carrito no encontrado, creando uno nuevo...");
             await createNewCart();
-            return createOrder();
+
+            // Reintentar la creación de la orden con el nuevo carrito
+            res = await fetch(`/orders`, {
+                method: "POST",
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cartId: currentCartId })
+            });
         }
-        if (!res.ok) throw new Error("Error interno");
+
+        if (!res.ok) throw new Error("Error al crear la orden");
 
         const data = await res.json();
         console.log("Orden creada:", data);
         alert("Orden creada correctamente");
 
-        // Crear un carrito nuevo automáticamente
-        const carritoRes = await fetch('/carts', { 
-            method: "POST",
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ usuarioId: USER_ID })
-        });
-        const nuevoCarrito = await carritoRes.json();
-        currentCartId = nuevoCarrito.id;
+        // 3️⃣ Opcional: crear un carrito nuevo automáticamente para seguir comprando
+        await createNewCart();
 
-        renderCart();   // Muestra carrito vacío
-        renderOrders(); // Actualiza listado de órdenes
+        // Actualizar la vista del carrito y las órdenes
+        renderCart();
+        renderOrders();
+
     } catch (e) {
         console.error(e);
         alert("Error al crear la orden");
