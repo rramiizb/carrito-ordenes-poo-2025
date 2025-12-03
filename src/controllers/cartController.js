@@ -9,15 +9,27 @@ const db = require('../../db');
 async function crearCarrito(req, res) {
   try {
     const { usuarioId } = req.body;
-    if (!usuarioId) return res.status(422).json({ error: "FaltanCampos", message: "usuarioId requerido" });
+    if (!usuarioId)
+      return res.status(422).json({ error: "FaltanCampos", message: "usuarioId requerido" });
 
+<<<<<<< Updated upstream
   const [result] = await db.query(
     "INSERT INTO carts (id_usuario, estado) VALUES (?, 'activo')",
     [1]
 );
+=======
+    // CORREGIDO: usar db y capturar result
+    const [result] = await db.query(
+      "INSERT INTO carts (id_usuario, estado) VALUES (?, 'activo')",
+      [usuarioId]
+    );
+>>>>>>> Stashed changes
 
+    return res.status(201).json({
+      id: String(result.insertId),
+      estado: "ABIERTO"
+    });
 
-    return res.status(201).json({ id: String(result.insertId), estado: "ABIERTO" });
   } catch (err) {
     console.error("crearCarrito:", err);
     return res.status(500).json({ error: "ErrorInterno" });
@@ -35,8 +47,12 @@ async function agregarItem(req, res) {
     const carritoId = req.params.id;
     const { product_id, cantidad } = req.body;
 
-    if (!product_id || typeof cantidad !== 'number') {
-      return res.status(422).json({ error: "FaltanCampos", message: "product_id (int) y cantidad (number) son requeridos" });
+    const cantidadNum = Number(cantidad);
+
+    if (!product_id || isNaN(cantidadNum)) {
+      return res.status(422).json({
+        error: "FaltanCampos",
+        message: "product_id y cantidad numérica son requeridos"});
     }
 
     // validar carrito existe y está abierto
