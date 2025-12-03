@@ -11,10 +11,11 @@ async function crearCarrito(req, res) {
     const { usuarioId } = req.body;
     if (!usuarioId) return res.status(422).json({ error: "FaltanCampos", message: "usuarioId requerido" });
 
-    const [result] = await db.query(
-      "INSERT INTO carts (usuario_id, estado) VALUES (?, 'ABIERTO')",
-      [usuarioId]
-    );
+  await pool.query(
+    "INSERT INTO carts (id_usuario, estado) VALUES (?, 'activo')",
+    [1]
+);
+
 
     return res.status(201).json({ id: String(result.insertId), estado: "ABIERTO" });
   } catch (err) {
