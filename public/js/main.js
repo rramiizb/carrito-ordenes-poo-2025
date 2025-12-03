@@ -85,23 +85,37 @@ function renderCatalog() {
     lucide.createIcons();
 }
 
-// --- CARRITO ---
 async function addToCart(sku) {
     if (!currentCartId) return showToast("Inicializando carrito...");
 
-    // Buscar el producto en el catálogo
     const producto = CATALOGO.find(p => p.sku === sku);
     if (!producto) return showToast("Producto no encontrado");
 
     try {
-        const res = await fetch(`/carts/${currentCartId}/items`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                product_id: producto.id,  // usar el id real
-                cantidad: 1
-            })
-        });
+        // Primero, revisar si el producto ya está en el carrito
+        const carritoRes = await fetch(`/carts/${currentCartId}/items`);
+        const carritoItems = await carritoRes.json();
+        const itemExistente = carritoItems.find(i => i.product_id === producto.id);
+
+        let res;
+        if (itemExistente) {
+            // Si ya existe, actualizamos la cantidad
+            res = await fetch(`/carts/${currentCartId}/items/${itemExistente.id}`, {
+                method: 'PATCH', 
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cantidad: itemExistente.cantidad + 1 })
+            });
+        } else {
+            // Si no existe, lo agregamos
+            res = await fetch(`/carts/${currentCartId}/items`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    product_id: producto.id,
+                    cantidad: 1
+                })
+            });
+        }
 
         if (res.ok) {
             showToast("¡Producto agregado!");
@@ -112,10 +126,13 @@ async function addToCart(sku) {
             const err = await res.json();
             showToast(err.message || "Error al agregar");
         }
+
     } catch (e) { 
+        console.error(e);
         showToast("Error de conexión"); 
     }
 }
+
 
 async function renderCart() {
     hideAll();
