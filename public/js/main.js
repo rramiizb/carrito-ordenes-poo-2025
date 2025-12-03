@@ -92,44 +92,28 @@ async function addToCart(sku) {
         const producto = CATALOGO.find(p => p.sku === sku);
         if (!producto) return showToast("Producto no encontrado");
 
-        // 1️⃣ Si no hay carrito, crear uno y guardar currentCartId
+        // Crear carrito si no hay
         if (!currentCartId) {
             showToast("Inicializando carrito...");
             const nuevoCarrito = await createNewCart();
-            if (!nuevoCarrito || !nuevoCarrito.id) return;
+            if (!nuevoCarrito?.id) return;
             currentCartId = nuevoCarrito.id;
             console.log("Carrito iniciado:", currentCartId);
         }
 
-        // 2️⃣ Agregar item al carrito
-        let res = await fetch(`/carts/${currentCartId}/items`, {
+        // POST al carrito (si ya existe, suma cantidad en backend)
+        const res = await fetch(`/carts/${currentCartId}/items`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ product_id: producto.id, cantidad: 1 })
         });
 
-        if (res.ok) {
-            showToast("¡Producto agregado!");
-        } else if (res.status === 409) {
-            // 3️⃣ Si ya existe, sumar cantidad
-            res = await fetch(`/carts/${currentCartId}/items/${producto.id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ cantidad: 1 })
-            });
-
-            if (res.ok) {
-                showToast("Cantidad actualizada");
-            } else {
-                const err = await res.json().catch(() => ({}));
-                showToast(err.message || "Error al actualizar cantidad");
-            }
-        } else {
+        if (!res.ok) {
             const err = await res.json().catch(() => ({}));
-            showToast(err.message || "Error al agregar producto");
+            return showToast(err.message || "Error al agregar producto");
         }
 
-        // 4️⃣ Actualizar badge
+        showToast("¡Producto agregado!");
         const badge = document.getElementById('badge-count');
         badge.innerText = parseInt(badge.innerText || 0) + 1;
         badge.classList.remove('hidden');
@@ -139,6 +123,7 @@ async function addToCart(sku) {
         showToast("Error de conexión");
     }
 }
+
 
 
 
