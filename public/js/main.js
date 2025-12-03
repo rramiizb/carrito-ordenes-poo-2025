@@ -20,22 +20,37 @@ async function initApp() {
 }
 
 // Crear nuevo carrito
+// Crea un carrito nuevo y devuelve { id }
 async function createNewCart() {
     try {
         const res = await fetch('/carts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ usuarioId: USER_ID })
+            body: JSON.stringify({ usuarioId: USER_ID }) // asumimos que USER_ID está definido
         });
-        if (!res.ok) throw new Error("No se pudo crear carrito");
+
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            showToast(err.message || "No se pudo crear el carrito");
+            return null;
+        }
+
         const data = await res.json();
-        currentCartId = data.id;
-        console.log("Carrito iniciado:", currentCartId);
+        if (data?.id) {
+            currentCartId = data.id; // actualizamos global
+            console.log("Carrito iniciado:", currentCartId);
+            return data;
+        } else {
+            showToast("No se recibió ID del carrito");
+            return null;
+        }
     } catch (e) {
         console.error(e);
-        showToast("Error conectando al servidor.");
+        showToast("Error al crear carrito");
+        return null;
     }
 }
+
 
 // --- FUNCIONES GENERALES ---
 function hideAll() {
@@ -84,6 +99,7 @@ function renderCatalog() {
     `).join('');
     lucide.createIcons();
 }
+
 // --- AGREGAR PRODUCTO AL CARRITO ---
 async function addToCart(sku) {
     try {
@@ -94,11 +110,12 @@ async function addToCart(sku) {
         if (!currentCartId) {
             showToast("Inicializando carrito...");
             const nuevoCarrito = await createNewCart();
-            if (!nuevoCarrito) return; // si falla, salimos
+            if (!nuevoCarrito?.id) return; // si falla, salimos
+            currentCartId = nuevoCarrito.id; // actualizar el carrito actual
         }
 
-        // 2️⃣ Agregar item al carrito directamente usando POST
-        const res = await fetch(`/carts/${currentCartId}/items`, {
+        // 2️⃣ Intentar agregar el producto
+        let res = await fetch(`/carts/${currentCartId}/items`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ product_id: producto.id, cantidad: 1 })
@@ -106,27 +123,54 @@ async function addToCart(sku) {
 
         if (res.ok) {
             showToast("¡Producto agregado!");
-            const badge = document.getElementById('badge-count');
-            badge.innerText = parseInt(badge.innerText || 0) + 1;
-            badge.classList.remove('hidden');
-        } else if (res.status === 409) {
-            // Item ya existe → actualizar cantidad
-            await fetch(`/carts/${currentCartId}/items/${producto.id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ cantidad: 1 }) // sumar 1
-            });
-            showToast("Cantidad actualizada");
         } else {
             const err = await res.json().catch(() => ({}));
-            showToast(err.message || "Error al agregar");
+
+            if (res.status === 409) {
+                // 3️⃣ Item ya existe o carrito cerrado
+                if (err.error === "CarritoCerrado") {
+                    showToast("Carrito cerrado. Creando uno nuevo...");
+                    const nuevoCarrito = await createNewCart();
+                    if (!nuevoCarrito?.id) return;
+                    currentCartId = nuevoCarrito.id;
+
+                    // Reintentar agregar el producto
+                    res = await fetch(`/carts/${currentCartId}/items`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ product_id: producto.id, cantidad: 1 })
+                    });
+
+                    if (res.ok) {
+                        showToast("¡Producto agregado al nuevo carrito!");
+                    } else {
+                        showToast("No se pudo agregar el producto");
+                    }
+                } else {
+                    // 4️⃣ Actualizar cantidad si ya existe
+                    await fetch(`/carts/${currentCartId}/items/${producto.id}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ cantidad: 1 })
+                    });
+                    showToast("Cantidad actualizada");
+                }
+            } else {
+                showToast(err.message || "Error al agregar");
+            }
         }
+
+        // 5️⃣ Actualizar badge
+        const badge = document.getElementById('badge-count');
+        badge.innerText = parseInt(badge.innerText || 0) + 1;
+        badge.classList.remove('hidden');
 
     } catch (e) {
         console.error(e);
         showToast("Error de conexión");
     }
 }
+
 
 
 
