@@ -1,5 +1,4 @@
-const USER_ID = 1;
-let currentCartId = null;
+
 let itemToDelete = null;
 
 // --- CATÁLOGO VISUAL ---
@@ -13,42 +12,47 @@ const CATALOGO = [
 ];
 
 // --- INICIALIZAR APP Y CREAR CARRITO ---
-async function initApp() {
-    renderCatalog();
-    lucide.createIcons();
-    await createNewCart();
+let currentCartId = null;
+const USER_ID = 1; // tu usuario fijo o dinámico
+
+async function initCart() {
+    try {
+        // Intentar obtener un carrito abierto del backend
+        const res = await fetch(`/users/${USER_ID}/open-cart`);
+        if (res.ok) {
+            const data = await res.json();
+            currentCartId = data.id;
+        } else {
+            // Si no existe, crear uno nuevo
+            const nuevo = await createNewCart();
+            if (nuevo) currentCartId = nuevo.id;
+        }
+        console.log("Carrito iniciado:", currentCartId);
+    } catch (e) {
+        console.error("Error al iniciar carrito", e);
+    }
 }
 
-// Crear nuevo carrito
-// Crea un carrito nuevo y devuelve { id }
-// Crear un nuevo carrito en el servidor y actualizar currentCartId
+// Crear un carrito
 async function createNewCart() {
     try {
         const res = await fetch('/carts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ usuarioId: USER_ID }) // asegúrate de tener USER_ID definido
+            body: JSON.stringify({ usuarioId: USER_ID })
         });
-
-        if (!res.ok) {
-            const err = await res.json().catch(() => ({}));
-            showToast(err.message || "Error al crear carrito");
-            return null;
-        }
-
-        const carrito = await res.json();
-        currentCartId = carrito.id; // actualizar la variable global
-        console.log("Carrito iniciado:", currentCartId);
-        return carrito;
+        if (!res.ok) return null;
+        const data = await res.json();
+        currentCartId = data.id;
+        return data;
     } catch (e) {
-        console.error("createNewCart:", e);
-        showToast("Error de conexión al crear carrito");
+        console.error("Error creando carrito", e);
         return null;
     }
 }
 
-
-
+// Llamar al iniciar la app
+initCart();
 
 // --- FUNCIONES GENERALES ---
 function hideAll() {
@@ -103,17 +107,9 @@ async function addToCart(sku) {
     try {
         const producto = CATALOGO.find(p => p.sku === sku);
         if (!producto) return showToast("Producto no encontrado");
+        if (!currentCartId) return showToast("Carrito no inicializado");
 
-        // 1️⃣ Crear carrito si no existe
-        if (!currentCartId) {
-            showToast("Inicializando carrito...");
-            const nuevoCarrito = await createNewCart();
-            if (!nuevoCarrito?.id) return;
-            currentCartId = nuevoCarrito.id;
-        }
-
-        // 2️⃣ Intentar agregar item
-        let res = await fetch(`/carts/${currentCartId}/items`, {
+        const res = await fetch(`/carts/${currentCartId}/items`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ product_id: producto.id, cantidad: 1 })
@@ -121,54 +117,23 @@ async function addToCart(sku) {
 
         const data = await res.json().catch(() => ({}));
 
-        // 3️⃣ Si carrito cerrado → crear nuevo carrito y agregar el producto
-        if (data.error === "CarritoCerrado") {
-            showToast("El carrito estaba cerrado. Se creó uno nuevo.");
-            const nuevoCarrito = await createNewCart();
-            if (!nuevoCarrito?.id) return;
-            currentCartId = nuevoCarrito.id;
-
-            res = await fetch(`/carts/${currentCartId}/items`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ product_id: producto.id, cantidad: 1 })
-            });
-        }
-
-        // 4️⃣ Si item ya existía, actualizar cantidad
-        if (res.status === 409) {
-            const patchRes = await fetch(`/carts/${currentCartId}/items/${producto.id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ cantidad: 1 })
-            });
-            if (patchRes.ok) {
-                showToast("Cantidad actualizada");
-                const badge = document.getElementById('badge-count');
-                badge.innerText = parseInt(badge.innerText || 0) + 1;
-                badge.classList.remove('hidden');
-            } else {
-                const err = await patchRes.json().catch(() => ({}));
-                showToast(err.message || "Error al actualizar cantidad");
-            }
-            return;
-        }
-
-        // 5️⃣ Respuesta correcta
         if (res.ok) {
             showToast("¡Producto agregado!");
             const badge = document.getElementById('badge-count');
             badge.innerText = parseInt(badge.innerText || 0) + 1;
             badge.classList.remove('hidden');
+        } else if (data.error === "CarritoCerrado") {
+            showToast("Carrito cerrado, crea una nueva orden primero");
         } else {
-            showToast(data.message || "Error al agregar el producto");
+            showToast(data.message || "Error al agregar item");
         }
 
     } catch (e) {
-        console.error("addToCart:", e);
+        console.error(e);
         showToast("Error de conexión");
     }
 }
+
 
 
 
@@ -227,26 +192,28 @@ async function createOrder() {
 
     try {
         const res = await fetch('/orders', {
-            method: "POST",
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ carritoId: currentCartId })
         });
 
-        if (!res.ok) {
-            const err = await res.json().catch(() => ({}));
-            return alert(err.message || "Error al crear la orden");
-        }
-
         const data = await res.json();
-        alert("Orden creada correctamente");
-        currentCartId = null;  // reset del carrito actual
-        renderCart();           // mostrar carrito vacío
-        renderOrders();         // actualizar listado de órdenes
+
+        if (res.ok) {
+            showToast("Orden creada correctamente");
+            // Crear un nuevo carrito automáticamente
+            await createNewCart();
+            renderCart();   // muestra carrito vacío
+            renderOrders(); // actualiza listado de órdenes
+        } else {
+            showToast(data.message || "Error al crear orden");
+        }
     } catch (e) {
         console.error(e);
-        alert("Error de conexión al crear la orden");
+        showToast("Error de conexión al crear orden");
     }
 }
+
 
 
 
