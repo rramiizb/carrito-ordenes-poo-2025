@@ -97,53 +97,41 @@ async function addToCart(sku) {
         const producto = CATALOGO.find(p => p.sku === sku);
         if (!producto) return showToast("Producto no encontrado");
 
-        // 1️⃣ Crear carrito si no hay
         if (!currentCartId) {
             const nuevoCarrito = await createNewCart();
             if (!nuevoCarrito?.id) return;
         }
 
-        // 2️⃣ Intentar agregar item
-        let res = await fetch(`/carts/${currentCartId}/items`, {
+        const res = await fetch(`/carts/${currentCartId}/items`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ product_id: producto.id, cantidad: 1 })
         });
 
-        // 3️⃣ Manejar carrito cerrado
-        if (res.status === 409) {
+        if (res.ok) {
+            showToast("¡Producto agregado!");
+            const badge = document.getElementById('badge-count');
+            badge.innerText = parseInt(badge.innerText || 0) + 1;
+            badge.classList.remove('hidden');
+            renderCart();
+        } else {
             const data = await res.json().catch(() => ({}));
             if (data.error === "CarritoCerrado") {
                 showToast("Carrito cerrado, creando uno nuevo...");
                 const nuevoCarrito = await createNewCart();
                 if (!nuevoCarrito?.id) return;
-
-                // reintentar agregar
-                res = await fetch(`/carts/${currentCartId}/items`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ product_id: producto.id, cantidad: 1 })
-                });
+                // Reintento una sola vez
+                await addToCart(sku);
+            } else {
+                showToast(data.message || "Error al agregar producto");
             }
         }
-
-        if (!res.ok) {
-            const err = await res.json().catch(() => ({}));
-            return showToast(err.message || "Error al agregar producto");
-        }
-
-        // 4️⃣ Actualizar UI
-        showToast("¡Producto agregado!");
-        const badge = document.getElementById('badge-count');
-        badge.innerText = parseInt(badge.innerText || 0) + 1;
-        badge.classList.remove('hidden');
-
-        renderCart(); // actualizar listado del carrito
     } catch (e) {
         console.error(e);
         showToast("Error de conexión");
     }
 }
+
 
 // --- Renderizar carrito ---
 async function renderCart() {
