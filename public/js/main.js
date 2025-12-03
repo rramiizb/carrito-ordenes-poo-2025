@@ -89,11 +89,18 @@ function renderCatalog() {
 async function addToCart(sku) {
     if (!currentCartId) return showToast("Inicializando carrito...");
 
+    // Buscar el producto en el catálogo
+    const producto = CATALOGO.find(p => p.sku === sku);
+    if (!producto) return showToast("Producto no encontrado");
+
     try {
         const res = await fetch(`/carts/${currentCartId}/items`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sku, cantidad: 1 })
+            body: JSON.stringify({ 
+                product_id: producto.id,  // <-- usar el id real
+                cantidad: 1
+            })
         });
 
         if (res.ok) {
@@ -101,7 +108,6 @@ async function addToCart(sku) {
             const badge = document.getElementById('badge-count');
             badge.innerText = parseInt(badge.innerText || 0) + 1;
             badge.classList.remove('hidden');
-            // No renderCart() ni redirect automático
         } else {
             const err = await res.json();
             showToast(err.message || "Error al agregar");
