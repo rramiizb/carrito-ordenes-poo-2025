@@ -211,48 +211,46 @@ async function renderCart() {
 
 // --- CREAR ORDEN ---
 async function createOrder() {
-    if (!currentCartId) return alert("No hay carrito activo");
+    if (!currentCartId) return showToast("No hay carrito activo");
 
     try {
-        // 1️⃣ Intentar crear la orden con el carrito actual
-        let res = await fetch(`/orders`, {
+        // 1️⃣ Llamar al backend para crear la orden
+        const res = await fetch('/orders', {
             method: "POST",
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ cartId: currentCartId })
+            body: JSON.stringify({ carritoId: currentCartId })
         });
 
-        // 2️⃣ Si el carrito no existe en el backend, crear uno nuevo
-        if (res.status === 404) {
-            showToast("Carrito no encontrado, creando uno nuevo...");
-            await createNewCart();
-
-            // Reintentar la creación de la orden con el nuevo carrito
-            res = await fetch(`/orders`, {
-                method: "POST",
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ cartId: currentCartId })
-            });
+        // 2️⃣ Manejar respuestas no exitosas
+        if (!res.ok) {
+            let errMsg = "Error al crear la orden";
+            try {
+                const err = await res.json();
+                errMsg = err.message || errMsg;
+            } catch {
+                // si no es JSON, dejamos el mensaje genérico
+            }
+            showToast(errMsg);
+            return;
         }
 
-        if (!res.ok) throw new Error("Error al crear la orden");
-
+        // 3️⃣ Obtener datos de la orden creada
         const data = await res.json();
         console.log("Orden creada:", data);
-        alert("Orden creada correctamente");
+        showToast("Orden creada correctamente");
 
-        // 3️⃣ Opcional: crear un carrito nuevo automáticamente para seguir comprando
+        // 4️⃣ Crear un nuevo carrito automáticamente
         await createNewCart();
 
-        // Actualizar la vista del carrito y las órdenes
-        renderCart();
-        renderOrders();
+        // 5️⃣ Actualizar la vista del carrito y las órdenes
+        renderCart();   // muestra carrito vacío
+        renderOrders(); // actualiza listado de órdenes
 
     } catch (e) {
         console.error(e);
-        alert("Error al crear la orden");
+        showToast("Error de conexión");
     }
 }
-
 
 async function renderOrders() {
     hideAll();
