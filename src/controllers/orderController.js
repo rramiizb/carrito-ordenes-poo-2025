@@ -1,56 +1,144 @@
+// src/controllers/orderController.js
 const db = require('../../db');
+const { cerrarCarrito } = require('../services/cerrarCarritoService'); // si lo tenés
 
-
-async function crearOrden(res, carrito) {
+// Crear orden a partir de body { carritoId, direccionEnvio, modalidadEnvio, metodoPago }
+async function crearOrden(req, res) {
   try {
+    const { carritoId, direccionEnvio, modalidadEnvio, metodoPago } = req.body;
+
+    if (!carritoId) return res.status(422).json({ error: "FaltanCampos", message: "carritoId requerido" });
+
+    // cerrar carrito (verifica existencia / estado ABIERTO / calcula totales)
+    const resultado = await cerrarCarrito(carritoId);
+    if (resultado?.error) {
+      if (resultado.error === "CarritoNoExiste") return res.status(404).json({ error: "CarritoNoExiste" });
+      if (resultado.error === "CarritoVacio") return res.status(409).json({ error: "CarritoVacio" });
+      return res.status(500).json({ error: "ErrorInterno", message: resultado.message });
+    }
+
+    const carrito = resultado; // tiene items, subtotal, impuestos, total
+
+    // Insertar orden en tabla orders
     const [orderResult] = await db.query(
-      `INSERT INTO orders (carrito_id, subtotal, impuestos, total, estado) VALUES (?, ?, ?, ?, 'CERRADO')`,
-      [carrito.id, carrito.subtotal, carrito.impuestos, carrito.total]
+      `INSERT INTO orders (cart_id, subtotal, impuestos, total, estado, direccion_envio, modalidad_envio, metodo_pago)
+       VALUES (?, ?, ?, ?, 'PENDIENTE_PAGO', ?, ?, ?)`,
+      [carritoId, carrito.subtotal, carrito.impuestos, carrito.total, direccionEnvio || null, modalidadEnvio || null, metodoPago || null]
     );
 
     const orderId = orderResult.insertId;
 
-    // Insertar items de la orden
-    for (const item of carrito.items) {
+    // Insertar order_items
+    for (const it of carrito.items) {
+      // it should have product_id, cantidad, precio or precio_unitario
+      const productId = it.product_id || it.product_id;
+      const cantidad = Number(it.cantidad || 0);
+      const precio_unitario = Number(it.precio || it.precio_unitario || 0);
+
       await db.query(
-        `INSERT INTO order_items (order_id, sku, cantidad, precio_unitario) VALUES (?, ?, ?, ?)`,
-        [orderId, item.sku, item.cantidad, item.precio]
+        `INSERT INTO order_items (order_id, product_id, cantidad, precio_unitario) VALUES (?, ?, ?, ?)`,
+        [orderId, productId, cantidad, precio_unitario]
       );
     }
 
-    res.json({ message: "Orden creada correctamente", orderId });
+    return res.status(201).json({ id: String(orderId), estado: "PENDIENTE_PAGO", total: carrito.total });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "ErrorInterno", message: err.message });
+    console.error("crearOrden:", err);
+    return res.status(500).json({ error: "ErrorInterno", message: err.message });
   }
 }
 
-
+// Obtener todas las órdenes
 async function obtenerOrdenes(req, res) {
   try {
     const [orders] = await db.query("SELECT * FROM orders ORDER BY id DESC");
 
     const results = [];
-    for (let o of orders) {
+    for (const o of orders) {
       const [items] = await db.query(
-        "SELECT oi.*, p.nombre FROM order_items oi LEFT JOIN products p ON oi.sku = p.sku WHERE oi.order_id = ?",
+        `SELECT oi.product_id, oi.cantidad, oi.precio_unitario, p.nombre
+         FROM order_items oi
+         LEFT JOIN products p ON oi.product_id = p.id
+         WHERE oi.order_id = ?`,
         [o.id]
       );
-      items.forEach(i => i.precio_unitario = Number(i.precio_unitario) || 0);
+
       results.push({
-        ...o,
-        subtotal: Number(o.subtotal) || 0,
-        impuestos: Number(o.impuestos) || 0,
-        total: Number(o.total) || 0,
+        id: String(o.id),
+        cart_id: String(o.cart_id),
+        subtotal: Number(o.subtotal || 0),
+        impuestos: Number(o.impuestos || 0),
+        total: Number(o.total || 0),
+        estado: o.estado,
+        direccion_envio: o.direccion_envio || null,
+        modalidad_envio: o.modalidad_envio || null,
+        metodo_pago: o.metodo_pago || null,
         items
       });
     }
 
-    res.status(200).json(results);
+    return res.status(200).json(results);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "ErrorInterno", message: err.message });
+    console.error("obtenerOrdenes:", err);
+    return res.status(500).json({ error: "ErrorInterno", message: err.message });
   }
 }
 
-module.exports = { crearOrden, obtenerOrdenes };
+// Obtener orden por id
+async function obtenerOrdenPorId(req, res) {
+  try {
+    const id = req.params.id;
+    const [orders] = await db.query("SELECT * FROM orders WHERE id = ?", [id]);
+    if (!orders[0]) return res.status(404).json({ error: "OrdenNoExiste" });
+
+    const o = orders[0];
+    const [items] = await db.query(
+      `SELECT oi.product_id, oi.cantidad, oi.precio_unitario, p.nombre
+       FROM order_items oi
+       LEFT JOIN products p ON oi.product_id = p.id
+       WHERE oi.order_id = ?`,
+      [id]
+    );
+
+    return res.status(200).json({
+      id: String(o.id),
+      cart_id: String(o.cart_id),
+      subtotal: Number(o.subtotal || 0),
+      impuestos: Number(o.impuestos || 0),
+      total: Number(o.total || 0),
+      estado: o.estado,
+      direccion_envio: o.direccion_envio || null,
+      modalidad_envio: o.modalidad_envio || null,
+      metodo_pago: o.metodo_pago || null,
+      items
+    });
+  } catch (err) {
+    console.error("obtenerOrdenPorId:", err);
+    return res.status(500).json({ error: "ErrorInterno", message: err.message });
+  }
+}
+
+/**
+ * PATCH /orders/:id/estado
+ * Body: { estado: "PAGADA" }
+ * Allowed states: PENDIENTE_PAGO, PAGADA, ENVIADA, ENTREGADA, CANCELADA
+ */
+async function actualizarEstado(req, res) {
+  try {
+    const id = req.params.id;
+    const { estado } = req.body;
+    const allowed = ["PENDIENTE_PAGO", "PAGADA", "ENVIADA", "ENTREGADA", "CANCELADA"];
+    if (!allowed.includes(estado)) return res.status(422).json({ error: "EstadoInvalido" });
+
+    // (Aquí podrías validar transiciones si hace falta)
+    const [result] = await db.query("UPDATE orders SET estado = ? WHERE id = ?", [estado, id]);
+    if (result.affectedRows === 0) return res.status(404).json({ error: "OrdenNoExiste" });
+
+    return res.status(200).json({ id: String(id), estado });
+  } catch (err) {
+    console.error("actualizarEstado:", err);
+    return res.status(500).json({ error: "ErrorInterno", message: err.message });
+  }
+}
+
+module.exports = { crearOrden, obtenerOrdenes, obtenerOrdenPorId, actualizarEstado };
