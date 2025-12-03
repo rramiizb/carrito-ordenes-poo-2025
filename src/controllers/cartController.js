@@ -12,6 +12,7 @@ async function crearCarrito(req, res) {
     if (!usuarioId)
       return res.status(422).json({ error: "FaltanCampos", message: "usuarioId requerido" });
 
+
     // CORREGIDO: usar db y capturar result
     const [result] = await db.query(
       "INSERT INTO carts (id_usuario, estado) VALUES (?, 'activo')",
