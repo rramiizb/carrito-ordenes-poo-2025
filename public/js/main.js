@@ -28,10 +28,15 @@ async function createNewCart() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ usuarioId: USER_ID })
         });
-        if (!res.ok) return null;
-        return await res.json();
+        if (!res.ok) throw new Error("No se pudo crear el carrito");
+        const data = await res.json();
+        currentCartId = data.id;
+        console.log("Carrito iniciado:", currentCartId);
+        renderCart();
+        return data;
     } catch (e) {
-        console.error("createNewCart:", e);
+        console.error(e);
+        showToast("Error al crear carrito");
         return null;
     }
 }
@@ -92,29 +97,26 @@ async function addToCart(sku) {
         const producto = CATALOGO.find(p => p.sku === sku);
         if (!producto) return showToast("Producto no encontrado");
 
-        // Crear carrito si no hay
+        // 1️⃣ Crear carrito si no hay
         if (!currentCartId) {
             const nuevoCarrito = await createNewCart();
             if (!nuevoCarrito?.id) return;
-            currentCartId = nuevoCarrito.id;
-            console.log("Carrito iniciado:", currentCartId);
         }
 
-        // Intentar agregar item
+        // 2️⃣ Intentar agregar item
         let res = await fetch(`/carts/${currentCartId}/items`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ product_id: producto.id, cantidad: 1 })
         });
 
-        // Si el carrito está cerrado → crear uno nuevo
+        // 3️⃣ Manejar carrito cerrado
         if (res.status === 409) {
             const data = await res.json().catch(() => ({}));
             if (data.error === "CarritoCerrado") {
                 showToast("Carrito cerrado, creando uno nuevo...");
                 const nuevoCarrito = await createNewCart();
                 if (!nuevoCarrito?.id) return;
-                currentCartId = nuevoCarrito.id;
 
                 // reintentar agregar
                 res = await fetch(`/carts/${currentCartId}/items`, {
@@ -130,22 +132,20 @@ async function addToCart(sku) {
             return showToast(err.message || "Error al agregar producto");
         }
 
+        // 4️⃣ Actualizar UI
         showToast("¡Producto agregado!");
         const badge = document.getElementById('badge-count');
         badge.innerText = parseInt(badge.innerText || 0) + 1;
         badge.classList.remove('hidden');
 
+        renderCart(); // actualizar listado del carrito
     } catch (e) {
         console.error(e);
         showToast("Error de conexión");
     }
 }
 
-
-
-
-
-// --- RENDERIZAR CARRITO ---
+// --- Renderizar carrito ---
 async function renderCart() {
     hideAll();
     document.getElementById('view-cart').classList.remove('hidden');
@@ -155,29 +155,25 @@ async function renderCart() {
     const footer = document.getElementById('cart-footer');
 
     try {
-        // 1️⃣ Obtener carrito actual
-        let res = await fetch(`/carts/${currentCartId}`);
-        if (res.status === 404) {
-            // Crear un carrito nuevo si no existe
-            showToast("Carrito no encontrado, creando uno nuevo...");
+        const res = await fetch(`/carts/${currentCartId}`);
+        if (res.status === 404 || res.status === 409) {
+            // Si el carrito no existe o está cerrado, crear uno nuevo
             await createNewCart();
-            res = await fetch(`/carts/${currentCartId}`);
+            return renderCart();
         }
 
-        if (!res.ok) throw new Error("No se pudo obtener el carrito");
-
+        if (!res.ok) throw new Error("Error fetching cart");
         const cart = await res.json();
         const items = cart.items || [];
 
-        // 2️⃣ Renderizar items
-        if (items.length === 0) {
+        if (!items.length) {
             list.innerHTML = `<p>Tu carrito está vacío</p>`;
             footer.classList.add('hidden');
         } else {
             footer.classList.remove('hidden');
             list.innerHTML = items.map(i => {
-                const precio = Number(i.precio) || 0;
-                const cantidad = Number(i.cantidad) || 0;
+                const precio = Number(i.precio_unitario || 0);
+                const cantidad = Number(i.cantidad || 0);
                 return `
                     <div class="cart-item">
                         <span>${i.nombre}</span>
@@ -192,13 +188,11 @@ async function renderCart() {
             document.getElementById('summary-tax').innerText = `$${Number(cart.impuestos || 0).toFixed(2)}`;
             document.getElementById('summary-total').innerText = `$${Number(cart.total || 0).toFixed(2)}`;
         }
-
     } catch (e) {
         console.error(e);
         list.innerHTML = '<p class="text-red-500">No se pudo cargar el carrito.</p>';
     }
 }
-
 
 // --- CREAR ORDEN ---
 async function createOrder() {
