@@ -4,12 +4,12 @@ let itemToDelete = null;
 
 // --- CATÁLOGO VISUAL ---
 const CATALOGO = [
-    { sku: 'BK-001', nombre: 'Libro POO Avanzado', precio: 15000, cat: 'Libros', img: 'https://images.unsplash.com/photo-1532012197267-da84d127e765?auto=format&fit=crop&w=400&q=80' },
-    { sku: 'TE-002', nombre: 'Teclado Mecánico', precio: 45000, cat: 'Tecnología', img: 'https://images.unsplash.com/photo-1595225476474-87563907a212?auto=format&fit=crop&w=400&q=80' },
-    { sku: 'TE-003', nombre: 'Mouse Gamer', precio: 12000, cat: 'Tecnología', img: 'https://images.unsplash.com/photo-1527814050087-3793815479db?auto=format&fit=crop&w=400&q=80' },
-    { sku: 'RO-004', nombre: 'Remera Dev', precio: 8000, cat: 'Ropa', img: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=400&q=80' },
-    { sku: 'BK-005', nombre: 'Clean Code', precio: 22000, cat: 'Libros', img: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=400&q=80' },
-    { sku: 'TE-006', nombre: 'Monitor 24"', precio: 120000, cat: 'Tecnología', img: 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?auto=format&fit=crop&w=400&q=80' },
+    { id: 1, sku: 'BK-001', nombre: 'Libro POO Avanzado', precio: 15000, cat: 'Libros', img: 'https://images.unsplash.com/photo-1532012197267-da84d127e765?auto=format&fit=crop&w=400&q=80' },
+    { id: 2, sku: 'TE-002', nombre: 'Teclado Mecánico', precio: 45000, cat: 'Tecnología', img: 'https://images.unsplash.com/photo-1595225476474-87563907a212?auto=format&fit=crop&w=400&q=80' },
+    { id: 3, sku: 'TE-003', nombre: 'Mouse Gamer', precio: 12000, cat: 'Tecnología', img: 'https://images.unsplash.com/photo-1527814050087-3793815479db?auto=format&fit=crop&w=400&q=80' },
+    { id: 4, sku: 'RO-004', nombre: 'Remera Dev', precio: 8000, cat: 'Ropa', img: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=400&q=80' },
+    { id: 5, sku: 'BK-005', nombre: 'Clean Code', precio: 22000, cat: 'Libros', img: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=400&q=80' },
+    { id: 6, sku: 'TE-006', nombre: 'Monitor 24"', precio: 120000, cat: 'Tecnología', img: 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?auto=format&fit=crop&w=400&q=80' },
 ];
 
 // --- INICIALIZAR APP Y CREAR CARRITO ---
@@ -98,7 +98,7 @@ async function addToCart(sku) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
-                product_id: producto.id,  // <-- usar el id real
+                product_id: producto.id,  // usar el id real
                 cantidad: 1
             })
         });
