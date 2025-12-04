@@ -1,4 +1,5 @@
-const API_URL = "http://poo2025.unsada.edu.ar:8050";
+const API_URL = "https://poo2025.unsada.edu.ar:8050";
+
 
 let itemToDelete = null;
 let currentCartId = null;
