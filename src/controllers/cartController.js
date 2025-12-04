@@ -20,7 +20,7 @@ async function crearCarrito(req, res) {
 
     return res.status(201).json({
       id: String(result.insertId),
-      estado: "ABIERTO"
+      estado: "activo"
     });
 
   } catch (err) {
@@ -46,7 +46,9 @@ async function agregarItem(req, res) {
 
     const [carritos] = await db.query("SELECT * FROM carts WHERE id = ?", [carritoId]);
     
-    
+    if (carritos[0].estado !== "activo")
+    return res.status(409).json({ error: "CarritoCerrado" });
+
   
 
     const [prods] = await db.query("SELECT id, precio, stock, nombre FROM products WHERE id = ?", [product_id]);
