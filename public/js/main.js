@@ -244,18 +244,34 @@ async function renderOrders() {
         if (!res.ok) throw new Error("Error al obtener órdenes");
 
         const orders = await res.json();
-        list.innerHTML = orders.map(o => `
-            <div class="order-item border p-4 mb-2">
-                <h4>Orden #${o.id} - Estado: ${o.estado}</h4>
-                <p>Subtotal: $${(o.subtotal || 0).toFixed(2)}, IVA: $${(o.impuestos || 0).toFixed(2)}, Total: $${(o.total || 0).toFixed(2)}</p>
-                <div>Items: ${o.items.map(i => `${i.nombre} x${i.cantidad} ($${(i.precio_unitario || i.precio || 0).toFixed(2)})`).join(", ")}</div>
-            </div>
-        `).join('');
+
+        list.innerHTML = orders.map(o => {
+            const subtotal = Number(o.subtotal || 0).toFixed(2);
+            const impuestos = Number(o.impuestos || 0).toFixed(2);
+            const total = Number(o.total || 0).toFixed(2);
+
+            const itemsHTML = o.items.map(i => {
+                const nombre = i.nombre || "Producto";
+                const cantidad = Number(i.cantidad || 0);
+                const precio = Number(i.precio_unitario || i.precio || 0).toFixed(2);
+                return `${nombre} x${cantidad} ($${precio})`;
+            }).join(", ");
+
+            return `
+                <div class="order-item border p-4 mb-2">
+                    <h4>Orden #${o.id} - Estado: ${o.estado}</h4>
+                    <p>Subtotal: $${subtotal}, IVA: $${impuestos}, Total: $${total}</p>
+                    <div>Items: ${itemsHTML}</div>
+                </div>
+            `;
+        }).join('');
+
     } catch (e) {
         console.error(e);
         list.innerHTML = '<p class="text-red-500">No se pudo cargar las órdenes.</p>';
     }
 }
+
 
 
 // --- ELIMINAR ITEM ---
