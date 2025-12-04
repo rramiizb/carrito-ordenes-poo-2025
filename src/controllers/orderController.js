@@ -9,7 +9,7 @@ async function crearOrden(req, res) {
 
     if (!carritoId) return res.status(422).json({ error: "FaltanCampos", message: "carritoId requerido" });
 
-    // cerrar carrito (verifica existencia / estado ABIERTO / calcula totales)
+    // cerrar carrito
     const resultado = await cerrarCarrito(carritoId);
     if (resultado?.error) {
       if (resultado.error === "CarritoNoExiste") return res.status(404).json({ error: "CarritoNoExiste" });
@@ -17,23 +17,27 @@ async function crearOrden(req, res) {
       return res.status(500).json({ error: "ErrorInterno", message: resultado.message });
     }
 
-    const carrito = resultado; // tiene items, subtotal, impuestos, total
+    const carrito = resultado; // items, subtotal, impuestos, total
 
-    // Insertar orden en tabla orders
+    // Asegurarse que los totales sean números
+    const subtotal = Number(carrito.subtotal || 0);
+    const impuestos = Number(carrito.impuestos || 0);
+    const total = Number(carrito.total || 0);
+
     const [orderResult] = await db.query(
-      `INSERT INTO orders (cart_id, subtotal, impuestos, total, estado, direccion_envio, modalidad_envio, metodo_pago)
+      `INSERT INTO orders 
+       (cart_id, subtotal, impuestos, total, estado, direccion_envio, modalidad_envio, metodo_pago)
        VALUES (?, ?, ?, ?, 'PENDIENTE_PAGO', ?, ?, ?)`,
-      [carritoId, carrito.subtotal, carrito.impuestos, carrito.total, direccionEnvio || null, modalidadEnvio || null, metodoPago || null]
+      [carritoId, subtotal, impuestos, total, direccionEnvio || null, modalidadEnvio || null, metodoPago || null]
     );
 
     const orderId = orderResult.insertId;
 
     // Insertar order_items
     for (const it of carrito.items) {
-      // it should have product_id, cantidad, precio or precio_unitario
-      const productId = it.product_id || it.product_id;
+      const productId = it.product_id;
       const cantidad = Number(it.cantidad || 0);
-      const precio_unitario = Number(it.precio || it.precio_unitario || 0);
+      const precio_unitario = Number(it.precio_unitario || it.precio || 0);
 
       await db.query(
         `INSERT INTO order_items (order_id, product_id, cantidad, precio_unitario) VALUES (?, ?, ?, ?)`,
@@ -41,7 +45,8 @@ async function crearOrden(req, res) {
       );
     }
 
-    return res.status(201).json({ id: String(orderId), estado: "PENDIENTE_PAGO", total: carrito.total });
+    return res.status(201).json({ id: String(orderId), estado: "PENDIENTE_PAGO", total });
+
   } catch (err) {
     console.error("crearOrden:", err);
     return res.status(500).json({ error: "ErrorInterno", message: err.message });
