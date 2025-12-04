@@ -20,13 +20,16 @@ async function cerrarCarrito(carritoId) {
     }
 
     // 2. Obtener ítems del carrito
-    const [items] = await db.query(
-      `SELECT ci.*, p.nombre, p.precio
-       FROM cart_items ci
-       LEFT JOIN products p ON ci.sku = p.sku
-       WHERE ci.carrito_id = ?`,
-      [carritoId]
-    );
+   // src/services/cerrarCarritoService.js
+const [items] = await db.query(
+  `SELECT ci.*, p.nombre, p.precio
+   FROM cart_items ci
+   LEFT JOIN products p ON ci.product_id = p.id
+   WHERE ci.cart_id = ?`,
+  [carritoId]
+);
+
+
 
     if (!items.length) {
       return { error: "CarritoVacio" };
