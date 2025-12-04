@@ -15,7 +15,7 @@ async function cerrarCarrito(carritoId) {
 
     const carrito = carritos[0];
 
-    if (carrito.estado !== "ABIERTO") {
+    if (carrito.estado !== "activo") {
       return { error: "CarritoYaCerrado" };
     }
 
