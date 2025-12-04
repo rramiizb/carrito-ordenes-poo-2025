@@ -1,3 +1,4 @@
+const API_URL = "http://poo2025.unsada.edu.ar:8050";
 
 let itemToDelete = null;
 
@@ -148,6 +149,7 @@ async function addToCart(sku) {
         showToast("Error de conexión");
     }
 }
+
 
 
 
