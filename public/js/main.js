@@ -17,21 +17,36 @@ const USER_ID = 1; // tu usuario fijo o dinámico
 
 async function initCart() {
     try {
-        // Intentar obtener un carrito abierto del backend
-        const res = await fetch(`/users/${USER_ID}/open-cart`);
-        if (res.ok) {
-            const data = await res.json();
-            currentCartId = data.id;
-        } else {
-            // Si no existe, crear uno nuevo
-            const nuevo = await createNewCart();
-            if (nuevo) currentCartId = nuevo.id;
+        // 1. Buscar carritos existentes del usuario
+        const res = await fetch(`${API_URL}/users/1/carts`);
+        let carts = [];
+        if (res.ok) carts = await res.json();
+
+        // 2. Buscar carrito activo
+        let open = carts.find(c => c.estado === "activo");
+
+        if (open) {
+            currentCartId = open.id;
+            console.log("Carrito activo detectado:", currentCartId);
+            return;
         }
-        console.log("Carrito iniciado:", currentCartId);
-    } catch (e) {
-        console.error("Error al iniciar carrito", e);
+
+        // 3. Si no hay, crear uno
+        const createRes = await fetch(`${API_URL}/carts`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ usuarioId: 1 })
+        });
+
+        const newCart = await createRes.json();
+        currentCartId = newCart.id;
+        console.log("Carrito creado:", currentCartId);
+
+    } catch (err) {
+        console.error("Error en initCart:", err);
     }
 }
+
 
 // Crear un carrito
 async function createNewCart() {

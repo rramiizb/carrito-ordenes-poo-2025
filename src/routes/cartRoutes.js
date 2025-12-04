@@ -15,4 +15,7 @@ router.get('/:id', cartController.verCarrito);
 // 4.4 Quitar ítem
 router.delete('/:id/items/:productId', cartController.eliminarItem);
 
+router.get("/users/:id/carts", listarCarritosUsuario);
+
+
 module.exports = router;
