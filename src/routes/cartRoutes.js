@@ -2,6 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const cartController = require('../controllers/cartController');
+const { listarCarritosUsuario} = require("../controllers/cartController");
 
 // 4.1 Crear carrito
 router.post('/', cartController.crearCarrito);
@@ -19,3 +20,4 @@ router.get("/users/:id/carts", listarCarritosUsuario);
 
 
 module.exports = router;
+

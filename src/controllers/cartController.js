@@ -138,4 +138,14 @@ async function eliminarItem(req, res) {
   }
 }
 
-module.exports = { crearCarrito, agregarItem, verCarrito, eliminarItem };
+
+
+
+module.exports = { 
+  crearCarrito,
+  agregarItem,
+  verCarrito,
+  eliminarItem,
+  listarCarritosUsuario
+};
+
