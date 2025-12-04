@@ -138,6 +138,23 @@ async function eliminarItem(req, res) {
   }
 }
 
+async function listarCarritosUsuario(req, res) {
+  try {
+    const userId = req.params.id;
+
+    const [rows] = await db.query(
+      "SELECT id, estado FROM carts WHERE id_usuario = ? ORDER BY id DESC",
+      [userId]
+    );
+
+    return res.status(200).json(rows);
+
+  } catch (err) {
+    console.error("listarCarritosUsuario:", err);
+    return res.status(500).json({ error: "ErrorInterno" });
+  }
+}
+
 
 
 
