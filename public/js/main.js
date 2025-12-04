@@ -18,44 +18,40 @@ const USER_ID = 1; // tu usuario fijo o dinámico
 
 async function initCart() {
     try {
-        // 1. Buscar carritos existentes del usuario
-        const res = await fetch(`${API_URL}/users/1/carts`);
-        let carts = [];
-        if (res.ok) carts = await res.json();
+        // intentar usar carrito 1
+        const res = await fetch(`/carts/1`);
 
-        // 2. Buscar carrito activo
-        let open = carts.find(c => c.estado === "activo");
-
-        if (open) {
-            currentCartId = open.id;
-            console.log("Carrito activo detectado:", currentCartId);
+        if (res.ok) {
+            currentCartId = 1;
+            console.log("Usando carrito 1");
             return;
         }
 
-        // 3. Si no hay, crear uno
-        const createRes = await fetch(`${API_URL}/carts`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ usuarioId: 1 })
-        });
+        // intentar carrito 2
+        const res2 = await fetch(`/carts/2`);
 
-        const newCart = await createRes.json();
-        currentCartId = newCart.id;
-        console.log("Carrito creado:", currentCartId);
+        if (res2.ok) {
+            currentCartId = 2;
+            console.log("Usando carrito 2");
+            return;
+        }
 
+        showToast("No hay carritos disponibles en el servidor");
     } catch (err) {
-        console.error("Error en initCart:", err);
+        console.error("initCart error", err);
     }
 }
+
+
 
 
 // Crear un carrito
 async function createNewCart() {
     try {
-        const res = await fetch('/carts', {
+        const res = await fetch(`${API_URL}/carts`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ usuarioId: USER_ID })
+            body: JSON.stringify({})
         });
         if (!res.ok) return null;
         const data = await res.json();
@@ -66,7 +62,6 @@ async function createNewCart() {
         return null;
     }
 }
-
 
 
 
@@ -150,8 +145,6 @@ async function addToCart(sku) {
         showToast("Error de conexión");
     }
 }
-
-
 
 
 
