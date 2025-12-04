@@ -14,31 +14,35 @@ const CATALOGO = [
 
 // --- INICIALIZAR APP Y CREAR CARRITO ---
 let currentCartId = null;
-const USER_ID = 1; // tu usuario fijo o dinámico
+const USER_ID = 1; // usuario fijo
 
 async function initCart() {
     try {
-        // intentar usar carrito 1
-        const res = await fetch(`/carts/1`);
-
-        if (res.ok) {
-            currentCartId = 1;
-            console.log("Usando carrito 1");
+        // 1) Obtener los carritos del usuario
+        const res = await fetch(`${API_URL}/users/${USER_ID}/carts`);
+        if (!res.ok) {
+            console.error("Error cargando carritos");
             return;
         }
 
-        // intentar carrito 2
-        const res2 = await fetch(`/carts/2`);
+        const carritos = await res.json();
 
-        if (res2.ok) {
-            currentCartId = 2;
-            console.log("Usando carrito 2");
+        // 2) Buscar carrito ACTIVO
+        const activo = carritos.find(c => c.estado?.toLowerCase() === "activo");
+
+        if (activo) {
+            currentCartId = activo.id;
+            console.log("Carrito activo encontrado:", currentCartId);
             return;
         }
 
-        showToast("No hay carritos disponibles en el servidor");
+        // 3) No hay carrito activo → crear uno nuevo
+        console.log("No hay carrito activo, creando uno nuevo...");
+        await createNewCart();
+
     } catch (err) {
-        console.error("initCart error", err);
+        console.error("initCart error:", err);
+        showToast("Error inicializando carrito");
     }
 }
 
@@ -51,12 +55,19 @@ async function createNewCart() {
         const res = await fetch(`${API_URL}/carts`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({})
+            body: JSON.stringify({ usuarioId: USER_ID })
         });
-        if (!res.ok) return null;
+
+        if (!res.ok) {
+            console.error("Error al crear carrito");
+            return null;
+        }
+
         const data = await res.json();
         currentCartId = data.id;
+        console.log("Nuevo carrito creado:", currentCartId);
         return data;
+
     } catch (e) {
         console.error("Error creando carrito", e);
         return null;
@@ -119,7 +130,8 @@ async function addToCart(sku) {
     try {
         const producto = CATALOGO.find(p => p.sku === sku);
         if (!producto) return showToast("Producto no encontrado");
-        if (!currentCartId) return showToast("Carrito no inicializado");
+        if (!currentCartId) await initCart();
+
 
         const res = await fetch(`/carts/${currentCartId}/items`, {
             method: 'POST',
