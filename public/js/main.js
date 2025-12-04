@@ -1,7 +1,8 @@
 const API_URL = "http://poo2025.unsada.edu.ar:8050";
 
 let itemToDelete = null;
-
+let currentCartId = null;
+const USER_ID = 1;
 // --- CATÁLOGO VISUAL ---
 const CATALOGO = [
     { id: 1, sku: 'BK-001', nombre: 'Libro POO Avanzado', precio: 15000, cat: 'Libros', img: 'https://images.unsplash.com/photo-1532012197267-da84d127e765?auto=format&fit=crop&w=400&q=80' },
@@ -12,28 +13,26 @@ const CATALOGO = [
     { id: 6, sku: 'TE-006', nombre: 'Monitor 24"', precio: 120000, cat: 'Tecnología', img: 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?auto=format&fit=crop&w=400&q=80' },
 ];
 
-// --- INICIALIZAR APP Y CREAR CARRITO ---
-let currentCartId = null;
-const USER_ID = 1; // usuario fijo
 
+
+// --- Inicializar carrito al cargar la app ---
 async function initCart() {
     try {
-        console.log("Creando un nuevo carrito...");
+        // 1. Buscar carrito activo del usuario
+        const res = await fetch(`${API_URL}/carts/users/${USER_ID}/carts`);
+        if (!res.ok) throw new Error("No se pudo buscar carritos");
 
-        const res = await fetch(`${API_URL}/carts`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ usuarioId: 1 })
-        });
+        const carritos = await res.json();
+        const activo = carritos.find(c => c.estado.toLowerCase() === "activo");
 
-        if (!res.ok) {
-            console.error("No se pudo crear el carrito");
+        if (activo) {
+            currentCartId = activo.id;
+            console.log("Carrito activo encontrado:", currentCartId);
             return;
         }
 
-        const data = await res.json();
-        currentCartId = data.id;
-        console.log("Carrito creado:", currentCartId);
+        // 2. Si no hay activo, crear uno nuevo
+        await createNewCart();
 
     } catch (err) {
         console.error("initCart error:", err);
@@ -44,7 +43,8 @@ async function initCart() {
 
 
 
-// Crear un carrito
+
+// --- Crear un nuevo carrito ---
 async function createNewCart() {
     try {
         const res = await fetch(`${API_URL}/carts`, {
@@ -53,22 +53,18 @@ async function createNewCart() {
             body: JSON.stringify({ usuarioId: USER_ID })
         });
 
-        if (!res.ok) {
-            console.error("Error al crear carrito");
-            return null;
-        }
+        if (!res.ok) throw new Error("Error al crear carrito");
 
         const data = await res.json();
         currentCartId = data.id;
         console.log("Nuevo carrito creado:", currentCartId);
         return data;
 
-    } catch (e) {
-        console.error("Error creando carrito", e);
+    } catch (err) {
+        console.error("createNewCart error:", err);
         return null;
     }
 }
-
 
 
 
@@ -125,10 +121,10 @@ async function addToCart(sku) {
     try {
         const producto = CATALOGO.find(p => p.sku === sku);
         if (!producto) return showToast("Producto no encontrado");
+
         if (!currentCartId) await initCart();
 
-
-        const res = await fetch(`/carts/${currentCartId}/items`, {
+        const res = await fetch(`${API_URL}/carts/${currentCartId}/items`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ product_id: producto.id, cantidad: 1 })
@@ -141,8 +137,11 @@ async function addToCart(sku) {
             const badge = document.getElementById('badge-count');
             badge.innerText = parseInt(badge.innerText || 0) + 1;
             badge.classList.remove('hidden');
+            renderCart(); // actualizar carrito visual
         } else if (data.error === "CarritoCerrado") {
-            showToast("Carrito cerrado, crea una nueva orden primero");
+            showToast("Carrito cerrado, creando uno nuevo...");
+            await createNewCart();
+            addToCart(sku); // reintentar agregar
         } else {
             showToast(data.message || "Error al agregar item");
         }
@@ -155,7 +154,7 @@ async function addToCart(sku) {
 
 
 
-// --- Renderizar carrito ---
+// --- RENDERIZAR CARRITO ---
 async function renderCart() {
     hideAll();
     document.getElementById('view-cart').classList.remove('hidden');
@@ -165,9 +164,8 @@ async function renderCart() {
     const footer = document.getElementById('cart-footer');
 
     try {
-        const res = await fetch(`/carts/${currentCartId}`);
+        const res = await fetch(`${API_URL}/carts/${currentCartId}`);
         if (res.status === 404 || res.status === 409) {
-            // Si el carrito no existe o está cerrado, crear uno nuevo
             await createNewCart();
             return renderCart();
         }
@@ -181,18 +179,18 @@ async function renderCart() {
             footer.classList.add('hidden');
         } else {
             footer.classList.remove('hidden');
-            list.innerHTML = items.map(i => {
-                const precio = Number(i.precio_unitario || 0);
-                const cantidad = Number(i.cantidad || 0);
-                return `
-                    <div class="cart-item">
-                        <span>${i.nombre}</span>
-                        <span>Cantidad: ${cantidad}</span>
-                        <span>Precio unitario: $${precio.toFixed(2)}</span>
-                        <span>Subtotal: $${(cantidad * precio).toFixed(2)}</span>
+            list.innerHTML = items.map(i => `
+                <div class="cart-item flex justify-between items-center py-2 border-b">
+                    <div>
+                        <span class="font-semibold">${i.nombre}</span>
+                        <span class="text-sm text-gray-500 ml-2">x${i.cantidad}</span>
                     </div>
-                `;
-            }).join('');
+                    <div>
+                        <span>$${(i.precio_unitario || 0).toFixed(2)}</span>
+                        <button onclick="removeFromCart(${i.product_id})" class="ml-2 text-red-600 hover:underline">Eliminar</button>
+                    </div>
+                </div>
+            `).join('');
 
             document.getElementById('summary-subtotal').innerText = `$${Number(cart.subtotal || 0).toFixed(2)}`;
             document.getElementById('summary-tax').innerText = `$${Number(cart.impuestos || 0).toFixed(2)}`;
@@ -204,14 +202,15 @@ async function renderCart() {
     }
 }
 
-// --- CREAR ORDEN ---
+
+// --- CREAR NUEVA ORDEN ---
 async function createOrder() {
-    if (!currentCartId) return alert("No hay carrito activo");
+    if (!currentCartId) return showToast("No hay carrito activo");
 
     try {
-        const res = await fetch('/orders', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+        const res = await fetch(`${API_URL}/orders`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ carritoId: currentCartId })
         });
 
@@ -219,20 +218,17 @@ async function createOrder() {
 
         if (res.ok) {
             showToast("Orden creada correctamente");
-            // Crear un nuevo carrito automáticamente
-            await createNewCart();
-            renderCart();   // muestra carrito vacío
-            renderOrders(); // actualiza listado de órdenes
+            await createNewCart(); // inicia un carrito nuevo automáticamente
+            renderCart();
+            renderOrders();
         } else {
             showToast(data.message || "Error al crear orden");
         }
-    } catch (e) {
-        console.error(e);
+    } catch (err) {
+        console.error(err);
         showToast("Error de conexión al crear orden");
     }
 }
-
-
 
 
 async function renderOrders() {
@@ -260,11 +256,11 @@ async function renderOrders() {
 
 
 // --- ELIMINAR ITEM ---
-function removeFromCart(sku) {
-    itemToDelete = sku;
+function removeFromCart(productId) {
+    itemToDelete = productId;
     const modal = document.getElementById('confirm-modal');
     const content = document.getElementById('confirm-modal-content');
-    
+
     modal.classList.remove('hidden');
     setTimeout(() => {
         modal.classList.remove('opacity-0');
@@ -276,11 +272,11 @@ function removeFromCart(sku) {
 function closeModal() {
     const modal = document.getElementById('confirm-modal');
     const content = document.getElementById('confirm-modal-content');
-    
+
     modal.classList.add('opacity-0');
     content.classList.remove('scale-100');
     content.classList.add('scale-95');
-    
+
     setTimeout(() => {
         modal.classList.add('hidden');
         itemToDelete = null;
@@ -292,15 +288,17 @@ document.getElementById('confirm-btn-action').addEventListener('click', async ()
     const btn = document.getElementById('confirm-btn-action');
     const originalText = btn.innerHTML;
     btn.innerHTML = "Eliminando..."; 
+
     try {
-        const res = await fetch(`/carts/${currentCartId}/items/${itemToDelete}`, { method: 'DELETE' });
+        const res = await fetch(`${API_URL}/carts/${currentCartId}/items/${itemToDelete}`, { method: 'DELETE' });
         if (res.ok) {
             showToast("Producto eliminado");
-            renderCart(); 
+            renderCart();
         } else {
             showToast("Error al eliminar");
         }
     } catch (e) {
+        console.error(e);
         showToast("Error de conexión");
     } finally {
         btn.innerHTML = originalText;
