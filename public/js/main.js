@@ -67,8 +67,9 @@ async function createNewCart() {
     }
 }
 
-// Llamar al iniciar la app
-initCart();
+
+
+
 
 // --- FUNCIONES GENERALES ---
 function hideAll() {
@@ -308,4 +309,4 @@ document.getElementById('confirm-btn-action').addEventListener('click', async ()
 });
 
 // --- INICIALIZACION ---
-window.onload = initApp;
+window.onload = initCart;
