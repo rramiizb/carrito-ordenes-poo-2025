@@ -45,8 +45,9 @@ async function agregarItem(req, res) {
     }
 
     const [carritos] = await db.query("SELECT * FROM carts WHERE id = ?", [carritoId]);
-    if (!carritos[0]) return res.status(404).json({ error: "CarritoNoExiste" });
     
+    
+  
 
     const [prods] = await db.query("SELECT id, precio, stock, nombre FROM products WHERE id = ?", [product_id]);
     const producto = prods[0];
