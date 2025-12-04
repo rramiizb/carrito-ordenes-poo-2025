@@ -153,7 +153,7 @@ async function addToCart(sku) {
 }
 
 
-// --- RENDERIZAR CARRITO CORREGIDO ---
+// --- RENDERIZAR CARRITO CORREGIDO CON BOTÓN ELIMINAR ---
 async function renderCart() {
     hideAll();
     document.getElementById('view-cart').classList.remove('hidden');
@@ -187,11 +187,18 @@ async function renderCart() {
                 const precio = Number(i.precio_unitario || 0);
                 const cantidad = Number(i.cantidad || 0);
                 return `
-                    <div class="cart-item">
-                        <span>${i.nombre}</span>
-                        <span>Cantidad: ${cantidad}</span>
-                        <span>Precio unitario: $${precio.toFixed(2)}</span>
-                        <span>Subtotal: $${(cantidad * precio).toFixed(2)}</span>
+                    <div class="cart-item flex justify-between items-center border-b py-2">
+                        <div>
+                            <span class="font-semibold">${i.nombre}</span> 
+                            <span>Cantidad: ${cantidad}</span>
+                            <span>Precio unitario: $${precio.toFixed(2)}</span>
+                            <span>Subtotal: $${(cantidad * precio).toFixed(2)}</span>
+                        </div>
+                        <button 
+                            onclick="removeFromCart('${i.product_id}')" 
+                            class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600">
+                            Eliminar
+                        </button>
                     </div>
                 `;
             }).join('');
@@ -205,6 +212,7 @@ async function renderCart() {
         list.innerHTML = '<p class="text-red-500">No se pudo cargar el carrito.</p>';
     }
 }
+
 
 // --- CREAR NUEVA ORDEN ---
 async function createOrder() {
