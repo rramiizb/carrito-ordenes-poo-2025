@@ -18,33 +18,28 @@ const USER_ID = 1; // usuario fijo
 
 async function initCart() {
     try {
-        // 1) Obtener los carritos del usuario
-        const res = await fetch(`${API_URL}/users/${USER_ID}/carts`);
+        console.log("Creando un nuevo carrito...");
+
+        const res = await fetch(`${API_URL}/carts`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ usuarioId: 1 })
+        });
+
         if (!res.ok) {
-            console.error("Error cargando carritos");
+            console.error("No se pudo crear el carrito");
             return;
         }
 
-        const carritos = await res.json();
-
-        // 2) Buscar carrito ACTIVO
-        const activo = carritos.find(c => c.estado?.toLowerCase() === "activo");
-
-        if (activo) {
-            currentCartId = activo.id;
-            console.log("Carrito activo encontrado:", currentCartId);
-            return;
-        }
-
-        // 3) No hay carrito activo → crear uno nuevo
-        console.log("No hay carrito activo, creando uno nuevo...");
-        await createNewCart();
+        const data = await res.json();
+        currentCartId = data.id;
+        console.log("Carrito creado:", currentCartId);
 
     } catch (err) {
         console.error("initCart error:", err);
-        showToast("Error inicializando carrito");
     }
 }
+
 
 
 
