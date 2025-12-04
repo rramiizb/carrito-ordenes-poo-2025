@@ -153,24 +153,28 @@ async function addToCart(sku) {
 }
 
 
-
-// --- RENDERIZAR CARRITO ---
+// --- RENDERIZAR CARRITO CORREGIDO ---
 async function renderCart() {
     hideAll();
     document.getElementById('view-cart').classList.remove('hidden');
-    if (!currentCartId) return;
+
+    // Asegurarse de tener un carrito activo
+    if (!currentCartId) await initCart();
 
     const list = document.getElementById('cart-items-list');
     const footer = document.getElementById('cart-footer');
 
     try {
         const res = await fetch(`${API_URL}/carts/${currentCartId}`);
+        
+        // Si el carrito no existe o está cerrado, crear uno nuevo
         if (res.status === 404 || res.status === 409) {
             await createNewCart();
             return renderCart();
         }
 
         if (!res.ok) throw new Error("Error fetching cart");
+
         const cart = await res.json();
         const items = cart.items || [];
 
@@ -179,18 +183,18 @@ async function renderCart() {
             footer.classList.add('hidden');
         } else {
             footer.classList.remove('hidden');
-            list.innerHTML = items.map(i => `
-                <div class="cart-item flex justify-between items-center py-2 border-b">
-                    <div>
-                        <span class="font-semibold">${i.nombre}</span>
-                        <span class="text-sm text-gray-500 ml-2">x${i.cantidad}</span>
+            list.innerHTML = items.map(i => {
+                const precio = Number(i.precio_unitario || 0);
+                const cantidad = Number(i.cantidad || 0);
+                return `
+                    <div class="cart-item">
+                        <span>${i.nombre}</span>
+                        <span>Cantidad: ${cantidad}</span>
+                        <span>Precio unitario: $${precio.toFixed(2)}</span>
+                        <span>Subtotal: $${(cantidad * precio).toFixed(2)}</span>
                     </div>
-                    <div>
-                        <span>$${(i.precio_unitario || 0).toFixed(2)}</span>
-                        <button onclick="removeFromCart(${i.product_id})" class="ml-2 text-red-600 hover:underline">Eliminar</button>
-                    </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
 
             document.getElementById('summary-subtotal').innerText = `$${Number(cart.subtotal || 0).toFixed(2)}`;
             document.getElementById('summary-tax').innerText = `$${Number(cart.impuestos || 0).toFixed(2)}`;
@@ -201,7 +205,6 @@ async function renderCart() {
         list.innerHTML = '<p class="text-red-500">No se pudo cargar el carrito.</p>';
     }
 }
-
 
 // --- CREAR NUEVA ORDEN ---
 async function createOrder() {
