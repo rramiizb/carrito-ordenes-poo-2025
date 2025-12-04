@@ -44,10 +44,20 @@ async function agregarItem(req, res) {
       return res.status(422).json({ error: "FaltanCampos", message: "product_id y cantidad numérica son requeridos"});
     }
 
-    const [carritos] = await db.query("SELECT * FROM carts WHERE id = ?", [carritoId]);
-    
-    if (carritos[0].estado !== "activo")
-    return res.status(409).json({ error: "CarritoCerrado" });
+   const [carritos] = await db.query(
+  "SELECT * FROM carts WHERE id = ?",
+  [carritoId]
+);
+
+if (!carritos.length) {
+  return res.status(404).json({ error: "CarritoNoExiste" });
+}
+
+if (carritos[0].estado.toLowerCase() !== "activo") {
+  return res.status(409).json({ error: "CarritoCerrado" });
+}
+
+
 
   
 
@@ -84,8 +94,15 @@ async function verCarrito(req, res) {
   try {
     const carritoId = req.params.id;
 
-    const [carritos] = await db.query("SELECT * FROM carts WHERE id = ?", [carritoId]);
-    if (!carritos[0]) return res.status(404).json({ message: "Carrito no encontrado" });
+   const [carritos] = await db.query(
+  "SELECT * FROM carts WHERE id = ?",
+  [carritoId]
+);
+
+if (!carritos.length) {
+  return res.status(404).json({ error: "CarritoNoExiste" });
+}
+
 
     // Obtener items con nombre y precio_unitario
     const [items] = await db.query(
