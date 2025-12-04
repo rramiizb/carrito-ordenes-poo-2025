@@ -1,25 +1,37 @@
+// app.js
 const express = require("express");
-const app = express();
 const path = require("path");
+const fs = require("fs");
+const https = require("https");
 
-// CARGAR RUTAS PRIMERO
+const app = express();
+
+// --- RUTAS ---
 const cartRoutes = require("./src/routes/cartRoutes");
 const orderRoutes = require("./src/routes/orderRoutes");
 
-// middlewares
+// --- MIDDLEWARES ---
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// archivos estáticos
+// --- ARCHIVOS ESTÁTICOS ---
 app.use(express.static(path.join(__dirname, 'public')));
 
-// usar rutas
+// --- USO DE RUTAS ---
 app.use("/carts", cartRoutes);
 app.use("/orders", orderRoutes);
 
-// arrancar servidor
-const PORT = process.env.PORT || 8050;
+// --- HTTPS CONFIG ---
+const privateKey = fs.readFileSync("/etc/letsencrypt/live/poo2025.unsada.edu.ar/privkey.pem", "utf8");
+const certificate = fs.readFileSync("/etc/letsencrypt/live/poo2025.unsada.edu.ar/fullchain.pem", "utf8");
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Servidor iniciado correctamente en http://0.0.0.0:${PORT}`);
+const credentials = { key: privateKey, cert: certificate };
+
+// Puerto 
+const PORT = 8050;
+
+const httpsServer = https.createServer(credentials, app);
+
+httpsServer.listen(PORT, () => {
+  console.log(`HTTPS Server running on port ${PORT}`);
 });
