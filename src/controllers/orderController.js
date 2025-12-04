@@ -20,16 +20,13 @@ async function crearOrden(req, res) {
     const carrito = resultado; // items, subtotal, impuestos, total
 
     // Asegurarse que los totales sean números
-    const subtotal = Number(carrito.subtotal || 0);
-    const impuestos = Number(carrito.impuestos || 0);
     const total = Number(carrito.total || 0);
 
-    const [orderResult] = await db.query(
-      `INSERT INTO orders 
-       (cart_id, subtotal, impuestos, total, estado, direccion_envio, modalidad_envio, metodo_pago)
-       VALUES (?, ?, ?, ?, 'PENDIENTE_PAGO', ?, ?, ?)`,
-      [carritoId, subtotal, impuestos, total, direccionEnvio || null, modalidadEnvio || null, metodoPago || null]
-    );
+   const [orderResult] = await db.query(
+  `INSERT INTO orders (id_usuario, total, estado)
+   VALUES (?, ?, 'PENDIENTE_PAGO')`,
+  [carrito.id_usuario, carrito.total]
+);
 
     const orderId = orderResult.insertId;
 
